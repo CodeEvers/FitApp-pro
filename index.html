@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitApp Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <section id="screen-login" class="active">
+        <div class="auth-card">
+            <div class="logo">
+                <i class="fas fa-dumbbell"></i>
+                <h2 id="auth-title">FitApp <span>Pro</span></h2>
+            </div>
+            <p id="auth-subtitle" style="color:var(--text-dim); margin-bottom: 25px;">Tvůj osobní fitness deník</p>
+            
+            <input type="email" id="email" placeholder="Email">
+            <input type="password" id="password" placeholder="Heslo">
+            
+            <button id="btn-login" class="main-btn">Vstoupit do aplikace</button>
+
+            <div style="margin-top: 20px; text-align: center; font-size: 0.9rem;">
+                <span id="auth-switch-text" style="color: var(--text-dim);">Ještě nemáš účet?</span>
+                <button id="btn-switch-auth" style="background: none; border: none; color: var(--blue); cursor: pointer; text-decoration: underline; margin-left: 5px;">
+                    Zaregistrovat se
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <section id="screen-dashboard">
+        <div class="container">
+            <header class="main-header">
+                <div>
+                    <h1>Ahoj, sportovče! 👋</h1>
+                    <p class="subtitle" id="dashboard-date">Dnes je 26. března 2026</p>
+                </div>
+                <button id="btn-logout" class="circle-btn"><i class="fas fa-power-off"></i></button>
+            </header>
+            
+            <div class="grid">
+                <div class="card" data-target="screen-training">
+                    <div class="card-icon blue"><i class="fas fa-book-open"></i></div>
+                    <h3>Zápisník</h3>
+                    <p>Evidence tréninků</p>
+                </div>
+                <div class="card" data-target="screen-food">
+                    <div class="card-icon green"><i class="fas fa-utensils"></i></div>
+                    <h3>Jídlo</h3>
+                    <p>Kalorie a váha</p>
+                </div>
+                <div class="card locked" data-target="screen-ai">
+                    <div class="card-icon purple"><i class="fas fa-robot"></i></div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <h3>AI Trenér</h3>
+                        <span class="vip-badge">VIP</span>
+                    </div>
+                    <p>Plán na míru</p>
+                </div>
+                <div class="card" data-target="screen-progress">
+                    <div class="card-icon orange"><i class="fas fa-chart-line"></i></div>
+                    <h3>Progress</h3>
+                    <p>Statistiky a grafy</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="screen-training">
+        <div class="container">
+            <button class="back-btn" data-target="screen-dashboard">
+                <i class="fas fa-chevron-left"></i> Zpět na přehled
+            </button>
+            
+            <h1>📝 Tréninkový deník</h1>
+            
+            <div class="date-picker-container">
+                <button id="prev-date" class="date-nav-btn prev-btn"><i class="fas fa-chevron-left"></i></button>
+                <div class="date-wrapper">
+                    <span id="current-date" class="date-text"></span>
+                    <input type="date" id="hidden-date-input">
+                    <i class="fas fa-calendar-alt calendar-trigger"></i>
+                </div>
+                <button id="next-date" class="date-nav-btn next-btn"><i class="fas fa-chevron-right"></i></button>
+            </div>
+
+            <div class="content-card">
+                <h3 id="form-title">Co jsi dnes dělal?</h3>
+                <input type="hidden" id="edit-id">
+                
+                <select id="exercise-phase">
+                    <option value="Ráno">Ráno</option>
+                    <option value="Dopoledne">Dopoledne</option>
+                    <option value="Odpoledne">Odpoledne</option>
+                    <option value="Večer">Večer</option>
+                </select>
+                
+                <input type="text" id="exercise-name" placeholder="Název aktivity (Běh, Benč, Plavání...)">
+                
+                <div class="input-row">
+                    <input type="number" id="exercise-sets" placeholder="Série">
+                    <input type="number" id="exercise-reps" placeholder="Opakování">
+                    <input type="number" id="exercise-weight" placeholder="Váha (kg)">
+                </div>
+
+                <div class="input-row" style="margin-top: 10px;">
+                    <input type="number" id="exercise-kcal" placeholder="Kalorie (kcal)">
+                    <select id="exercise-rating" style="grid-column: span 2;">
+                        <option value="">Jaký byl trénink?</option>
+                        <option value="🤩 Parádní trénink">🤩 Parádní trénink</option>
+                        <option value="💪 Cítil jsem se silně">💪 Cítil jsem se silně</option>
+                        <option value="😐 Dobrý průměr">😐 Dobrý průměr</option>
+                        <option value="😴 Unavený / Vyčerpaný">😴 Unavený / Vyčerpaný</option>
+                        <option value="🤕 Necítil jsem se dobře">🤕 Necítil jsem se dobře</option>
+                    </select>
+                </div>
+                
+                <button id="btn-add-exercise" class="add-btn">
+                    <i class="fas fa-plus"></i> <span id="btn-text">Přidat do deníku</span>
+                </button>
+            </div>
+            
+            <div id="exercise-list-wrapper"></div>
+        </div>
+    </section>
+
+    <section id="screen-food">
+        <div class="container">
+            <button class="back-btn" data-target="screen-dashboard"><i class="fas fa-chevron-left"></i> Zpět</button>
+            <h1>🍎 Jídlo a Váha</h1>
+
+            <div class="date-picker-container">
+                <button id="prev-date-food" class="date-nav-btn prev-btn"><i class="fas fa-chevron-left"></i></button>
+                <div class="date-wrapper" id="date-wrapper-food">
+                    <span id="current-date-food" class="date-text"></span>
+                    <input type="date" id="hidden-date-input-food" style="position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer;">
+                    <i class="fas fa-calendar-alt calendar-trigger"></i>
+                </div>
+                <button id="next-date-food" class="date-nav-btn next-btn"><i class="fas fa-chevron-right"></i></button>
+            </div>
+
+            <div class="content-card" style="border-left: 5px solid var(--orange);">
+                <h3>⚖️ Dnešní váha</h3>
+                <div class="weight-row" style="display: flex; gap: 10px;">
+                    <input type="number" id="body-weight-input" placeholder="Tvoje váha (kg)" step="0.1">
+                    <button id="btn-save-weight" class="main-btn" style="width: auto; padding: 0 20px; white-space: nowrap;">Uložit</button>
+                </div>
+            </div>
+
+            <div class="content-card">
+                <h3>🍴 Přidat jídlo</h3>
+                <input type="text" id="food-name" placeholder="Název jídla (Snídaně, Burger...)">
+                <div class="input-row">
+                    <input type="number" id="food-kcal" placeholder="Kcal">
+                    <input type="number" id="food-p" placeholder="Bílkoviny (g)">
+                    <input type="number" id="food-c" placeholder="Sacharidy (g)">
+                </div>
+                <div class="input-row" style="margin-top: 10px;">
+                    <input type="number" id="food-f" placeholder="Tuky (g)" style="grid-column: span 3;">
+                </div>
+                <button id="btn-add-food" class="add-btn" style="background: var(--accent); color: white;">
+                    <i class="fas fa-utensils"></i> Přidat jídlo
+                </button>
+            </div>
+
+            <div id="food-list-wrapper"></div>
+        </div>
+    </section>
+
+    <section id="screen-ai">
+        <div class="container">
+            <button class="back-btn" data-target="screen-dashboard"><i class="fas fa-chevron-left"></i> Zpět</button>
+            <h1>🤖 AI Trenér</h1>
+            <p>Sekce se připravuje...</p>
+        </div>
+    </section>
+
+    <section id="screen-progress">
+        <div class="container">
+            <button class="back-btn" data-target="screen-dashboard">
+                <i class="fas fa-chevron-left"></i> Zpět na přehled
+            </button>
+            <h1>📈 Tvůj Progress</h1>
+
+            <div class="content-card" style="margin-bottom: 20px;">
+                <label for="filter-activity" style="display:block; margin-bottom:10px; color:var(--text-dim); font-size: 0.9rem;">Zobrazit statistiky pro:</label>
+                <select id="filter-activity">
+                    <option value="all">Všechny aktivity (Souhrn)</option>
+                    <option value="weight_progress">Tělesná váha</option>
+                </select>
+            </div>
+
+            <div class="content-card" id="chart-container" style="display:none; padding: 1.5rem;">
+                <h3 style="margin-bottom: 20px;">Analýza výkonu</h3>
+                <canvas id="progressChart"></canvas>
+            </div>
+
+            <div id="monthly-stats-wrapper"></div>
+        </div>
+    </section>
+
+    <script src="script.js"></script>
+</body>
+</html>
