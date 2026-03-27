@@ -10,7 +10,7 @@ const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // --- INICIALIZACE ---
+    // --- INICIALIZACE PROMĚNNÝCH ---
     let dbExercises = [];
     let dbFood = [];
     let dbWeights = {};
@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentUser = null;
     let isRegistrationMode = false;
 
-    // --- DOM ELEMENTY ---
+    // --- DOM ELEMENTY (TRÉNINK) ---
     const phaseInput = document.getElementById('exercise-phase');
     const nameInput = document.getElementById('exercise-name');
     const setsInput = document.getElementById('exercise-sets');
@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const filterSelect = document.getElementById('filter-activity');
     const hiddenDateInput = document.getElementById('hidden-date-input');
 
+    // --- DOM ELEMENTY (JÍDLO A VÁHA) ---
     const foodNameInput = document.getElementById('food-name');
     const foodKcalInput = document.getElementById('food-kcal');
     const foodPInput = document.getElementById('food-p');
@@ -39,6 +40,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const bodyWeightInput = document.getElementById('body-weight-input');
     const hiddenDateInputFood = document.getElementById('hidden-date-input-food');
 
+    // --- DOM ELEMENTY (CÍLE) ---
+    const btnOpenGoals = document.getElementById('btn-open-goals');
+    const goalsSetup = document.getElementById('goals-setup');
+    const btnCalculateGoals = document.getElementById('btn-calculate-goals');
+    const goalAge = document.getElementById('goal-age');
+    const goalHeight = document.getElementById('goal-height');
+    const goalGender = document.getElementById('goal-gender');
+    const goalActivity = document.getElementById('goal-activity');
+    const goalType = document.getElementById('goal-type');
+
+    // --- DOM ELEMENTY (AUTH) ---
     const btnLogin = document.getElementById('btn-login');
     const btnSwitch = document.getElementById('btn-switch-auth');
     const authTitle = document.getElementById('auth-title');
@@ -68,7 +80,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnLogin.addEventListener('click', async () => {
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
-
         if (!email || !password) return alert("Vyplň prosím email i heslo.");
 
         if (isRegistrationMode) {
@@ -156,7 +167,43 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('prev-date-food')?.addEventListener('click', (e) => { e.stopPropagation(); currentDate.setDate(currentDate.getDate() - 1); updateDateDisplay(); });
     document.getElementById('next-date-food')?.addEventListener('click', (e) => { e.stopPropagation(); currentDate.setDate(currentDate.getDate() + 1); updateDateDisplay(); });
 
-    // --- 4. JÍDLO A VÁHA ---
+    // --- 4. LOGIKA CÍLŮ (PŘIDÁNO) ---
+    btnOpenGoals?.addEventListener('click', () => {
+        goalsSetup.style.display = goalsSetup.style.display === 'none' ? 'block' : 'none';
+    });
+
+    btnCalculateGoals?.addEventListener('click', async () => {
+        const age = parseInt(goalAge.value);
+        const height = parseInt(goalHeight.value);
+        const weight = parseFloat(bodyWeightInput.value);
+        const gender = goalGender.value;
+        const activity = parseFloat(goalActivity.value);
+        const goalModifier = parseInt(goalType.value);
+
+        if (!age || !height || !weight) {
+            alert("Prosím zadej věk, výšku a váhu (v políčku Dnešní váha), abych mohl vypočítat tvůj cíl.");
+            return;
+        }
+
+        // Mifflin-St Jeor rovnice
+        let bmr = (10 * weight) + (6.25 * height) - (5 * age);
+        bmr = (gender === 'male') ? bmr + 5 : bmr - 161;
+        const totalKcal = Math.round((bmr * activity) + goalModifier);
+        
+        const myGoals = {
+            kcal: totalKcal,
+            p: Math.round((totalKcal * 0.25) / 4),
+            c: Math.round((totalKcal * 0.45) / 4),
+            f: Math.round((totalKcal * 0.30) / 9)
+        };
+
+        localStorage.setItem('userGoals', JSON.stringify(myGoals));
+        alert(`Tvůj denní cíl byl nastaven na ${totalKcal} kcal!`);
+        goalsSetup.style.display = 'none';
+        renderFood();
+    });
+
+    // --- 5. JÍDLO A VÁHA ---
     document.getElementById('btn-save-weight').addEventListener('click', async () => {
         const weightVal = bodyWeightInput.value;
         const dateISO = currentDate.toISOString().split('T')[0];
@@ -192,18 +239,63 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (error) {
                 alert('Chyba při ukládání jídla: ' + error.message);
             } else {
-                foodNameInput.value = "";
-                foodKcalInput.value = "";
-                foodPInput.value = "";
-                foodCInput.value = "";
-                foodFInput.value = "";
+                foodNameInput.value = ""; foodKcalInput.value = "";
+                foodPInput.value = ""; foodCInput.value = ""; foodFInput.value = "";
                 alert('Jídlo uloženo!');
                 await fetchData(); 
             }
         }
     });
 
-    // --- 5. TRÉNINK (LOGIKA PŘIDÁVÁNÍ) ---
+    function renderFood() {
+        const wrapper = document.getElementById('food-list-wrapper');
+        if (!wrapper) return;
+        wrapper.innerHTML = "";
+        const dateISO = currentDate.toISOString().split('T')[0];
+        const todays = dbFood.filter(f => f.date === dateISO);
+        let tKcal = 0, tP = 0, tC = 0, tF = 0;
+        
+        todays.forEach(f => {
+            tKcal += Number(f.kcal); tP += Number(f.p); tC += Number(f.c); tF += Number(f.f);
+        });
+
+        // NAČTENÍ CÍLŮ
+        const savedGoals = JSON.parse(localStorage.getItem('userGoals')) || { kcal: 2000, p: 150, c: 250, f: 70 };
+        const diffKcal = savedGoals.kcal - tKcal;
+
+        // SUMMARY KARTA (Zobrazení zbývajících hodnot)
+        const summaryHtml = `
+            <div class="content-card" style="border-left: 5px solid var(--green); margin-bottom: 20px;">
+                <h3 style="text-align:center; margin-bottom:15px; font-size: 0.9rem; color: var(--text-dim);">Zbývá na dnešek</h3>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); text-align: center;">
+                    <div><small>Kcal</small><br><strong style="color: ${diffKcal < 0 ? '#fb7185' : '#4ade80'}">${diffKcal}</strong></div>
+                    <div><small>Bíl</small><br><strong>${Math.max(0, Math.round(savedGoals.p - tP))}g</strong></div>
+                    <div><small>Sach</small><br><strong>${Math.max(0, Math.round(savedGoals.c - tC))}g</strong></div>
+                    <div><small>Tuky</small><br><strong>${Math.max(0, Math.round(savedGoals.f - tF))}g</strong></div>
+                </div>
+            </div>`;
+
+        let listHtml = `<div class="phase-group"><div class="phase-title">Dnešní jídla</div><div class="phase-content">`;
+        if (todays.length > 0) {
+            todays.forEach(f => {
+                listHtml += `
+                    <div class="exercise-item">
+                        <div class="exercise-info">
+                            <h4>${f.name}</h4>
+                            <p>🔥 ${f.kcal} kcal | B:${f.p}g S:${f.c}g T:${f.f}g</p>
+                        </div>
+                        <button class="delete-exercise" onclick="deleteFood(${f.id})"><i class="fas fa-trash"></i></button>
+                    </div>`;
+            });
+            wrapper.innerHTML = summaryHtml + listHtml + "</div></div>";
+        } else {
+            wrapper.innerHTML = summaryHtml + `<p style="text-align:center; color:var(--text-dim); margin-top:20px;">Zatím žádná jídla.</p>`;
+        }
+    }
+
+    window.deleteFood = async (id) => { if(confirm('Smazat jídlo?')) { await _supabase.from('food').delete().eq('id', id); await fetchData(); } };
+
+    // --- 6. TRÉNINK (LOGIKA) ---
     document.getElementById('btn-add-exercise').addEventListener('click', async () => {
         const name = nameInput.value.trim();
         const editId = editIdInput.value;
@@ -231,49 +323,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderExercises();   
         }
     });
-    
-    function renderFood() {
-        const wrapper = document.getElementById('food-list-wrapper');
-        if (!wrapper) return;
-        wrapper.innerHTML = "";
-        const dateISO = currentDate.toISOString().split('T')[0];
-        const todays = dbFood.filter(f => f.date === dateISO);
-        let tKcal = 0, tP = 0, tC = 0, tF = 0;
-        
-        if (todays.length > 0) {
-            let html = `<div class="phase-group"><div class="phase-title">Dnešní jídla</div><div class="phase-content">`;
-            todays.forEach(f => {
-                tKcal += Number(f.kcal); tP += Number(f.p); tC += Number(f.c); tF += Number(f.f);
-                html += `
-                    <div class="exercise-item">
-                        <div class="exercise-info">
-                            <h4>${f.name}</h4>
-                            <p>🔥 ${f.kcal} kcal | B:${f.p}g S:${f.c}g T:${f.f}g</p>
-                        </div>
-                        <button class="delete-exercise" onclick="deleteFood(${f.id})"><i class="fas fa-trash"></i></button>
-                    </div>`;
-            });
-            const summaryHtml = `<div class="content-card" style="border-left: 5px solid var(--green); margin-bottom: 20px;">
-                <div style="display: grid; grid-template-columns: repeat(4, 1fr); text-align: center;">
-                    <div><small>Kcal</small><br><strong>${tKcal}</strong></div>
-                    <div><small>Bíl</small><br><strong>${tP}g</strong></div>
-                    <div><small>Sach</small><br><strong>${tC}g</strong></div>
-                    <div><small>Tuky</small><br><strong>${tF}g</strong></div>
-                </div></div>`;
-            wrapper.innerHTML = summaryHtml + html + "</div></div>";
-        }
-    }
 
-    window.deleteFood = async (id) => { if(confirm('Smazat jídlo?')) { await _supabase.from('food').delete().eq('id', id); await fetchData(); } };
-
-    nameInput.addEventListener('input', (e) => {
-        const isCardio = /běh|kolo|plavání|kardio|brusle|chůze/i.test(e.target.value);
-        setsInput.placeholder = isCardio ? "Km" : "Série";
-        repsInput.placeholder = isCardio ? "Minuty" : "Opakování";
-        weightInput.placeholder = isCardio ? "Tep (avg)" : "Váha (kg)";
-    });
-
-    // --- UPRAVENÁ FUNKCE S PODBARVENÍM (ŽÁDNÁ BOČNÍ ČÁRKA) ---
     function renderExercises() {
         const wrapper = document.getElementById('exercise-list-wrapper');
         if (!wrapper) return;
@@ -288,12 +338,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let html = `<div class="phase-group"><div class="phase-title">${phase}</div><div class="phase-content">`;
                 phaseExs.forEach(ex => {
                     const isC = /běh|kolo|plavání|kardio|brusle|chůze/i.test(ex.name);
-                    
-                    // Barvy: Modrá pro kardio, růžová pro ostatní
                     const mainColor = isC ? "#38bdf8" : "#fb7185";
-                    // Podbarvení (15% průhlednost)
                     const bgColor = isC ? "rgba(56, 189, 248, 0.15)" : "rgba(251, 113, 133, 0.15)";
-                    
                     let detail = isC ? `🏁 ${ex.sets} km | ⏱️ ${ex.reps} min` : `${ex.sets}×${ex.reps} | <strong>${ex.weight} kg</strong>`;
                     
                     html += `
@@ -329,7 +375,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.deleteEx = async (id) => { if(confirm('Opravdu smazat?')) { await _supabase.from('exercises').delete().eq('id', id); await fetchData(); } };
 
-    // --- 6. PROGRESS ---
+    // --- 7. PROGRESS A GRAFY ---
     filterSelect.addEventListener('change', () => updateProgressStats());
 
     function updateProgressStats() {
@@ -449,25 +495,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     backgroundColor: 'rgba(56, 189, 248, 0.1)',
                     extra: extraData 
                 }]
-            },
-            options: {
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let val = context.parsed.y;
-                                if (isC) {
-                                    let mins = context.dataset.extra[context.dataIndex];
-                                    return `${val} km (Čas: ${mins} min)`;
-                                }
-                                return `${val} kg`;
-                            }
-                        }
-                    }
-                }
             }
         });
     }
 
+    // --- INICIALIZACE ---
     updateDateDisplay();
 });
