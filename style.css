@@ -411,3 +411,65 @@ button { border: none; cursor: pointer; transition: 0.2s; font-family: inherit; 
     .grid { grid-template-columns: 1fr; }
     .input-row, .stats-grid { grid-template-columns: 1fr; }
 }
+
+/* --- STYLY PRO NASTAVENÍ CÍLŮ --- */
+#goals-setup {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 20px;
+    margin-top: 15px;
+    animation: fadeIn 0.3s ease;
+}
+
+#goals-setup h3 {
+    font-size: 1.1rem;
+    margin-bottom: 15px;
+    color: var(--green);
+}
+
+.goal-input-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.goal-input-group label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 5px;
+}
+
+#goals-setup input, 
+#goals-setup select {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+
+#btn-calculate-goals {
+    width: 100%;
+    background: var(--green);
+    color: black;
+    font-weight: 700;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+#btn-calculate-goals:active {
+    transform: scale(0.98);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
