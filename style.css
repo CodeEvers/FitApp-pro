@@ -565,3 +565,37 @@ button { border: none; cursor: pointer; transition: 0.2s; font-family: inherit; 
 .history-item:hover {
     background: rgba(255, 255, 255, 0.04);
 }
+.app-footer {
+  text-align: center;
+  padding: 40px 20px;
+  margin-top: 50px;
+  color: #888; /* Jemná šedá, aby to nerušilo */
+  font-family: sans-serif;
+}
+
+.footer-line {
+  height: 1px;
+  background: linear-gradient(to right, transparent, #333, transparent);
+  margin-bottom: 20px;
+}
+
+.app-footer strong {
+  color: #fff; /* Tvé jméno bude trochu svítit */
+}
+
+.support-btn {
+  background: transparent;
+  border: 1px solid #444;
+  color: #ccc;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: all 0.3s ease;
+}
+
+.support-btn:hover {
+  background: #222;
+  border-color: #00d1b2; /* Barva tvé aplikace (zelená/modrá) */
+  color: #fff;
+}
