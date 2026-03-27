@@ -8,6 +8,43 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        .app-footer {
+            text-align: center;
+            padding: 40px 20px;
+            margin-top: 40px;
+            color: #888;
+            font-family: sans-serif;
+        }
+        .footer-line {
+            height: 1px;
+            background: linear-gradient(to right, transparent, #333, transparent);
+            margin-bottom: 20px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .app-footer strong {
+            color: #fff;
+        }
+        .support-btn {
+            background: transparent;
+            border: 1px solid #444;
+            color: #ccc;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+        }
+        .support-btn:hover {
+            background: #222;
+            border-color: #0081ff; /* Modrá barva z tvého loga */
+            color: #fff;
+        }
+    </style>
 </head>
 <body>
 
@@ -266,6 +303,14 @@
             <div id="monthly-stats-wrapper"></div>
         </div>
     </section>
+
+    <footer class="app-footer">
+        <div class="footer-line"></div>
+        <p>Vytvořil <strong>Evers</strong> | 2026</p>
+        <button class="support-btn" onclick="alert('V pondělí sem přidáme tvůj QR kód! 😉')">
+            Podpořit autora ☕
+        </button>
+    </footer>
 
     <script src="script.js"></script>
 </body>
