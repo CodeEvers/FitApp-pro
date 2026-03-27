@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const bodyWeightInput = document.getElementById('body-weight-input');
     const hiddenDateInputFood = document.getElementById('hidden-date-input-food');
     
-    // Nové elementy pro přepínání váhy (přidej si tyto ID do HTML)
+    // Nové elementy pro přepínání váhy
     const btnOpenWeight = document.getElementById('btn-open-weight');
     const weightSetup = document.getElementById('weight-setup'); 
 
@@ -156,16 +156,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         hiddenDateInput.value = dateISO;
         if(hiddenDateInputFood) hiddenDateInputFood.value = dateISO;
 
-        // LOGIKA DYNAMICKÉHO TLAČÍTKA VÁHY
         const todayWeight = dbWeights[currentDate.toDateString()];
         if (todayWeight) {
             bodyWeightInput.value = todayWeight;
             if (btnOpenWeight) btnOpenWeight.innerText = `Moje váha: ${todayWeight} kg (Upravit)`;
-            if (weightSetup) weightSetup.style.display = 'none'; // Schovat panel, pokud už je váha zadaná
+            if (weightSetup) weightSetup.style.display = 'none'; 
         } else {
             bodyWeightInput.value = "";
             if (btnOpenWeight) btnOpenWeight.innerText = "Zadat dnešní váhu";
-            if (weightSetup) weightSetup.style.display = 'none'; // Ve výchozím stavu schováno
+            if (weightSetup) weightSetup.style.display = 'none'; 
         }
 
         renderExercises();
@@ -182,15 +181,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('prev-date-food')?.addEventListener('click', (e) => { e.stopPropagation(); currentDate.setDate(currentDate.getDate() - 1); updateDateDisplay(); });
     document.getElementById('next-date-food')?.addEventListener('click', (e) => { e.stopPropagation(); currentDate.setDate(currentDate.getDate() + 1); updateDateDisplay(); });
 
-    // --- 4. LOGIKA CÍLŮ A VÁHY (PŘEPÍNÁNÍ) ---
+    // --- 4. LOGIKA CÍLŮ A VÁHY ---
     btnOpenWeight?.addEventListener('click', () => {
         weightSetup.style.display = weightSetup.style.display === 'none' ? 'block' : 'none';
-        goalsSetup.style.display = 'none'; // Zavřít druhý panel
+        goalsSetup.style.display = 'none'; 
     });
 
     btnOpenGoals?.addEventListener('click', () => {
         goalsSetup.style.display = goalsSetup.style.display === 'none' ? 'block' : 'none';
-        if (weightSetup) weightSetup.style.display = 'none'; // Zavřít druhý panel
+        if (weightSetup) weightSetup.style.display = 'none'; 
     });
 
     btnCalculateGoals?.addEventListener('click', async () => {
@@ -207,7 +206,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        // Mifflin-St Jeor rovnice
         let bmr = (10 * weight) + (6.25 * height) - (5 * age);
         bmr = (gender === 'male') ? bmr + 5 : bmr - 161;
         const totalKcal = Math.round((bmr * activity) + goalModifier);
@@ -235,7 +233,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         dbWeights[currentDate.toDateString()] = weightVal;
         
         alert('Váha uložena!');
-        updateDateDisplay(); // Toto automaticky aktualizuje tlačítko a schová panel
+        updateDateDisplay();
     });
 
     document.getElementById('btn-add-food')?.addEventListener('click', async () => {
@@ -396,33 +394,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.deleteEx = async (id) => { if(confirm('Opravdu smazat?')) { await _supabase.from('exercises').delete().eq('id', id); await fetchData(); } };
 
-    // --- 7. PROGRESS A GRAFY (UPRAVENO PRO MODERNÍ KARTY) ---
+    // --- 7. PROGRESS A GRAFY (VÝPIS VŠECH AKTIVIT) ---
     filterSelect.addEventListener('change', () => updateProgressStats());
 
     function updateProgressStats() {
         const filterValue = filterSelect.value;
         const statsWrapper = document.getElementById('monthly-stats-wrapper');
         
-        // --- VÝPOČET STREAKU (Plamínek) ---
+        // Streak a měsíční kalorie (zůstává stejné)
         const activeDates = [...new Set(dbExercises.map(ex => ex.date))].sort((a,b) => new Date(b) - new Date(a));
         let streak = 0;
         let checkDate = new Date();
         checkDate.setHours(0,0,0,0);
-
         for (let i = 0; i < activeDates.length; i++) {
             let logDate = new Date(activeDates[i]);
             logDate.setHours(0,0,0,0);
-            
-            // Kolik dní je rozdíl mezi checkDate a logDate
             let diff = Math.floor((checkDate - logDate) / (1000 * 60 * 60 * 24));
-            
             if (diff === 0) { streak++; checkDate.setDate(checkDate.getDate() - 1); }
-            else if (diff === 1 && i === 0) { /* Dnes ještě nic, ale včera ano, streak pokračuje */ checkDate.setDate(checkDate.getDate() - 2); streak++; }
+            else if (diff === 1 && i === 0) { checkDate.setDate(checkDate.getDate() - 2); streak++; }
             else break;
         }
         document.getElementById('streak-value').innerHTML = `<i class="fas fa-fire streak-fire"></i>${streak}`;
 
-        // --- VÝPOČET KALORIÍ ZA AKTUÁLNÍ MĚSÍC ---
         const now = new Date();
         const thisMonthFood = dbFood.filter(f => {
             let d = new Date(f.date);
@@ -436,10 +429,80 @@ document.addEventListener('DOMContentLoaded', async () => {
                                thisMonthEx.reduce((s, ex) => s + (Number(ex.kcal) || 0), 0);
         document.getElementById('total-kcal-value').innerText = totalMonthKcal.toLocaleString();
 
-        // --- DYNAMICKÁ STATISTIKA (Podle filtru) ---
+        // Filtr menu
+        const allNames = [...new Set(dbExercises.map(ex => ex.name))].sort();
+        filterSelect.innerHTML = '<option value="all">Všechny aktivity (Souhrn)</option><option value="weight_progress">Tělesná váha</option>';
+        allNames.forEach(n => {
+            const opt = document.createElement('option'); opt.value = n; opt.textContent = n;
+            if (n === filterValue) opt.selected = true;
+            filterSelect.appendChild(opt);
+        });
+
+        // Logika výpisu všech záznamů
+        let filtered = (filterValue === 'all' || filterValue === 'weight_progress') ? dbExercises : dbExercises.filter(ex => ex.name === filterValue);
+        statsWrapper.innerHTML = "";
+        
+        const months = {};
+        filtered.forEach(ex => {
+            const d = new Date(ex.date);
+            const key = d.toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' });
+            if (!months[key]) months[key] = [];
+            months[key].push(ex);
+        });
+
+        // Výpočet LifeBest pro odznáčky
+        const lifeMax = {};
+        dbExercises.forEach(ex => {
+            const isC = /běh|kolo|plavání|kardio|chůze/i.test(ex.name);
+            const val = Number(isC ? ex.reps : ex.weight) || 0;
+            if (val <= 0) return;
+            if (!lifeMax[ex.name]) lifeMax[ex.name] = val;
+            else lifeMax[ex.name] = isC ? Math.min(lifeMax[ex.name], val) : Math.max(lifeMax[ex.name], val);
+        });
+
+        Object.keys(months).sort((a, b) => new Date(months[b][0].date) - new Date(months[a][0].date)).forEach(monthKey => {
+            const monthData = months[monthKey];
+            monthData.sort((a, b) => new Date(b.date) - new Date(a.date)); // Chronologicky v měsíci
+
+            const uniqueDays = [...new Set(monthData.map(ex => ex.date))].length;
+            const totalKcal = monthData.reduce((sum, ex) => sum + (Number(ex.kcal) || 0), 0);
+            
+            const card = document.createElement('div');
+            card.className = 'content-card';
+            card.innerHTML = `
+                <h3 class="month-header">${monthKey}</h3>
+                <div class="stats-grid">
+                    <div class="stat-card"><span class="stat-label">Dny</span><span class="stat-value">${uniqueDays}</span></div>
+                    <div class="stat-card"><span class="stat-label">Kalorie</span><span class="stat-value">${totalKcal}</span></div>
+                    <div class="stat-card"><span class="stat-label">Záznamů</span><span class="stat-value">${monthData.length}</span></div>
+                </div>
+                <div class="records-area" style="margin-top:20px;">
+                    ${monthData.map(ex => {
+                        const isC = /běh|kolo|plavání|kardio|chůze/i.test(ex.name);
+                        const val = Number(isC ? ex.reps : ex.weight);
+                        const isLB = val > 0 && val === lifeMax[ex.name];
+                        const dateDay = new Date(ex.date).getDate();
+                        const valDisplay = isC ? `${ex.reps} min (${ex.sets} km)` : `${ex.sets}×${ex.reps} | ${ex.weight} kg`;
+                        
+                        return `
+                            <div class="record-item" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding: 10px 0;">
+                                <div style="display:flex; flex-direction:column;">
+                                    <span style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;">${dateDay}. ${monthKey.split(' ')[0]}</span>
+                                    <span style="font-weight:600; color: ${isC ? '#38bdf8' : '#fb7185'};">${ex.name}</span>
+                                </div>
+                                <div class="record-tags">
+                                    ${isLB ? '<span class="badge life-best">LifeBest</span>' : ''}
+                                    <span class="record-val" style="font-size: 0.85rem;">${valDisplay}</span>
+                                </div>
+                            </div>`;
+                    }).join('')}
+                </div>`;
+            statsWrapper.appendChild(card);
+        });
+
+        // Dynamická statistika v horní liště
         const dynamicVal = document.getElementById('dynamic-stat-value');
         const dynamicLabel = document.getElementById('dynamic-stat-label');
-
         if (filterValue === 'all' || filterValue === 'weight_progress') {
             dynamicVal.innerText = dbExercises.length;
             dynamicLabel.innerText = "Celkem aktivit";
@@ -456,79 +519,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 dynamicLabel.innerText = "Life Max (kg)";
             }
         }
-
-        // --- RENDER HISTORIE (Tvá původní logika) ---
-        const allNames = [...new Set(dbExercises.map(ex => ex.name))].sort();
-        filterSelect.innerHTML = '<option value="all">Všechny aktivity (Souhrn)</option><option value="weight_progress">Tělesná váha</option>';
-        allNames.forEach(n => {
-            const opt = document.createElement('option'); opt.value = n; opt.textContent = n;
-            if (n === filterValue) opt.selected = true;
-            filterSelect.appendChild(opt);
-        });
-
-        const lifeMax = {};
-        dbExercises.forEach(ex => {
-            const isC = /běh|kolo|plavání|kardio/i.test(ex.name);
-            const val = Number(isC ? ex.reps : ex.weight) || 0;
-            if (val <= 0) return;
-            if (!lifeMax[ex.name]) lifeMax[ex.name] = val;
-            else lifeMax[ex.name] = isC ? Math.min(lifeMax[ex.name], val) : Math.max(lifeMax[ex.name], val);
-        });
-
-        let filtered = (filterValue === 'all' || filterValue === 'weight_progress') ? dbExercises : dbExercises.filter(ex => ex.name === filterValue);
-        statsWrapper.innerHTML = "";
-        
-        const months = {};
-        filtered.forEach(ex => {
-            const d = new Date(ex.date);
-            const key = d.toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' });
-            if (!months[key]) months[key] = [];
-            months[key].push(ex);
-        });
-
-        Object.keys(months).sort((a, b) => new Date(months[b][0].date) - new Date(months[a][0].date)).forEach(monthKey => {
-            const monthData = months[monthKey];
-            const uniqueDays = [...new Set(monthData.map(ex => ex.date))].length;
-            const totalKcal = monthData.reduce((sum, ex) => sum + (Number(ex.kcal) || 0), 0);
-            
-            const monthBest = {};
-            monthData.forEach(ex => {
-                const isC = /běh|kolo|plavání|kardio/i.test(ex.name);
-                const val = Number(isC ? ex.reps : ex.weight) || 0;
-                const kmValue = isC ? (Number(ex.sets) || 0) : 0;
-                if (!monthBest[ex.name]) {
-                    monthBest[ex.name] = { val: val, unit: isC ? "min" : "kg", km: kmValue };
-                } else {
-                    if (isC ? (val < monthBest[ex.name].val && val > 0) : (val > monthBest[ex.name].val)) {
-                        monthBest[ex.name].val = val;
-                        monthBest[ex.name].km = kmValue;
-                    }
-                }
-            });
-
-            const card = document.createElement('div');
-            card.className = 'content-card';
-            card.innerHTML = `<h3 class="month-header">${monthKey}</h3>
-                <div class="stats-grid">
-                    <div class="stat-card"><span class="stat-label">Dny</span><span class="stat-value">${uniqueDays}</span></div>
-                    <div class="stat-card"><span class="stat-label">Kalorie</span><span class="stat-value">${totalKcal}</span></div>
-                    <div class="stat-card"><span class="stat-label">Maxima</span><span class="stat-value">${Object.keys(monthBest).length}</span></div>
-                </div>
-                <div class="records-area" style="margin-top:20px;">
-                    ${Object.keys(monthBest).map(exName => {
-                        const isLB = monthBest[exName].val === lifeMax[exName];
-                        const isC = /běh|kolo|plavání|kardio/i.test(exName);
-                        const valDisplay = isC ? `${monthBest[exName].val} ${monthBest[exName].unit} (${monthBest[exName].km} km)` : `${monthBest[exName].val} ${monthBest[exName].unit}`;
-                        return `<div class="record-item">
-                            <span style="font-weight:600;">${exName}</span>
-                            <div class="record-tags">
-                                <span class="badge ${isLB ? 'life-best' : 'monthly-best'}">${isLB ? 'LifeBest' : 'MonthlyBest'}</span>
-                                <span class="record-val">${valDisplay}</span>
-                            </div></div>`;
-                    }).join('')}
-                </div>`;
-            statsWrapper.appendChild(card);
-        });
         updateChart(filterValue);
     }
 
