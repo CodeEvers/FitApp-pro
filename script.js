@@ -396,14 +396,69 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.deleteEx = async (id) => { if(confirm('Opravdu smazat?')) { await _supabase.from('exercises').delete().eq('id', id); await fetchData(); } };
 
-    // --- 7. PROGRESS A GRAFY ---
+    // --- 7. PROGRESS A GRAFY (UPRAVENO PRO MODERNÍ KARTY) ---
     filterSelect.addEventListener('change', () => updateProgressStats());
 
     function updateProgressStats() {
         const filterValue = filterSelect.value;
         const statsWrapper = document.getElementById('monthly-stats-wrapper');
-        const allNames = [...new Set(dbExercises.map(ex => ex.name))].sort();
         
+        // --- VÝPOČET STREAKU (Plamínek) ---
+        const activeDates = [...new Set(dbExercises.map(ex => ex.date))].sort((a,b) => new Date(b) - new Date(a));
+        let streak = 0;
+        let checkDate = new Date();
+        checkDate.setHours(0,0,0,0);
+
+        for (let i = 0; i < activeDates.length; i++) {
+            let logDate = new Date(activeDates[i]);
+            logDate.setHours(0,0,0,0);
+            
+            // Kolik dní je rozdíl mezi checkDate a logDate
+            let diff = Math.floor((checkDate - logDate) / (1000 * 60 * 60 * 24));
+            
+            if (diff === 0) { streak++; checkDate.setDate(checkDate.getDate() - 1); }
+            else if (diff === 1 && i === 0) { /* Dnes ještě nic, ale včera ano, streak pokračuje */ checkDate.setDate(checkDate.getDate() - 2); streak++; }
+            else break;
+        }
+        document.getElementById('streak-value').innerHTML = `<i class="fas fa-fire streak-fire"></i>${streak}`;
+
+        // --- VÝPOČET KALORIÍ ZA AKTUÁLNÍ MĚSÍC ---
+        const now = new Date();
+        const thisMonthFood = dbFood.filter(f => {
+            let d = new Date(f.date);
+            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        });
+        const thisMonthEx = dbExercises.filter(ex => {
+            let d = new Date(ex.date);
+            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        });
+        const totalMonthKcal = thisMonthFood.reduce((s, f) => s + (Number(f.kcal) || 0), 0) + 
+                               thisMonthEx.reduce((s, ex) => s + (Number(ex.kcal) || 0), 0);
+        document.getElementById('total-kcal-value').innerText = totalMonthKcal.toLocaleString();
+
+        // --- DYNAMICKÁ STATISTIKA (Podle filtru) ---
+        const dynamicVal = document.getElementById('dynamic-stat-value');
+        const dynamicLabel = document.getElementById('dynamic-stat-label');
+
+        if (filterValue === 'all' || filterValue === 'weight_progress') {
+            dynamicVal.innerText = dbExercises.length;
+            dynamicLabel.innerText = "Celkem aktivit";
+        } else {
+            const isC = /běh|kolo|plavání|kardio/i.test(filterValue);
+            const filteredExs = dbExercises.filter(ex => ex.name === filterValue);
+            if (isC) {
+                const totalKm = filteredExs.reduce((s, ex) => s + (Number(ex.sets) || 0), 0);
+                dynamicVal.innerText = totalKm.toFixed(1);
+                dynamicLabel.innerText = "Celkem km";
+            } else {
+                const maxW = Math.max(...filteredExs.map(ex => Number(ex.weight) || 0), 0);
+                dynamicVal.innerText = maxW;
+                dynamicLabel.innerText = "Life Max (kg)";
+            }
+        }
+
+        // --- RENDER HISTORIE (Tvá původní logika) ---
+        const allNames = [...new Set(dbExercises.map(ex => ex.name))].sort();
         filterSelect.innerHTML = '<option value="all">Všechny aktivity (Souhrn)</option><option value="weight_progress">Tělesná váha</option>';
         allNames.forEach(n => {
             const opt = document.createElement('option'); opt.value = n; opt.textContent = n;
