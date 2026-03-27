@@ -33,10 +33,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const hiddenDateInput = document.getElementById('hidden-date-input');
 
     // --- DYNAMICKÉ PŘEPÍNÁNÍ POLÍČEK (Běh -> Kilometry) ---
-    // Tato funkce hlídá změnu v názvu aktivity a mění popisky
     nameInput.addEventListener('input', () => {
         const val = nameInput.value.toLowerCase();
-        // Definujeme, co považujeme za kardio
         const isKardio = /běh|kolo|plavání|kardio|brusle|chůze|row/i.test(val);
 
         if (isKardio) {
@@ -153,7 +151,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         editIdInput.value = "";
         document.getElementById('form-title').innerText = "Co jsi dnes dělal?";
         document.getElementById('btn-text').innerText = "Přidat do deníku";
-        // Resetujeme i placeholdery na původní hodnoty
         setsInput.placeholder = "Série";
         repsInput.placeholder = "Opakování";
         weightInput.placeholder = "Váha (kg)";
@@ -411,16 +408,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             ratingInput.value = ex.rating; editIdInput.value = ex.id;
             document.getElementById('form-title').innerText = "Upravit záznam";
             document.getElementById('btn-text').innerText = "Uložit změny";
-            // Při editaci také zkontrolujeme, zda jde o kardio pro správné placeholdery
             nameInput.dispatchEvent(new Event('input'));
         }
     };
 
     window.deleteEx = async (id) => { if(confirm('Opravdu smazat?')) { await _supabase.from('exercises').delete().eq('id', id); await fetchData(); } };
 
-    // --- 7. PROGRESS A GRAFY (VÝPIS VŠECH AKTIVIT) ---
+    // --- 7. PROGRESS A GRAFY (ÚPRAVA PRO VYHLEDÁVÁNÍ) ---
     filterSelect.addEventListener('change', () => updateProgressStats());
-    timeFilter.addEventListener('change', () => updateProgressStats()); 
+    // Změněno na 'input' pro okamžitou reakci při psaní roku
+    timeFilter.addEventListener('input', () => updateProgressStats()); 
 
     function updateProgressStats() {
         const filterValue = filterSelect.value;
@@ -451,7 +448,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         let filtered = dbExercises.filter(ex => {
             const matchesActivity = (filterValue === 'all' || filterValue === 'weight_progress' || ex.name === filterValue);
-            const matchesTime = (timeValue === 'all' || ex.date.includes(timeValue));
+            // Flexibilní filtr času - funguje pro "all", prázdné pole nebo shodu textu (např. "2024")
+            const matchesTime = (timeValue === 'all' || timeValue === "" || ex.date.includes(timeValue));
             return matchesActivity && matchesTime;
         });
 
@@ -551,14 +549,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (name === 'weight_progress') {
             const sw = Object.keys(dbWeights)
                 .map(d => ({ d: new Date(d), v: dbWeights[d], iso: new Date(d).toISOString().split('T')[0] }))
-                .filter(x => x.v && (timeRange === 'all' || x.iso.includes(timeRange)))
+                .filter(x => x.v && (timeRange === 'all' || timeRange === "" || x.iso.includes(timeRange)))
                 .sort((a, b) => a.d - b.d);
             labels = sw.map(x => x.d.toLocaleDateString('cs-CZ'));
             values = sw.map(x => x.v);
             labelTxt = "Váha (kg)";
         } else {
             const sorted = dbExercises
-                .filter(ex => ex.name === name && (timeRange === 'all' || ex.date.includes(timeRange)))
+                .filter(ex => ex.name === name && (timeRange === 'all' || timeRange === "" || ex.date.includes(timeRange)))
                 .sort((a, b) => new Date(a.date) - new Date(b.date));
             labels = sorted.map(ex => new Date(ex.date).toLocaleDateString('cs-CZ'));
             values = sorted.map(ex => Number(isC ? ex.sets : ex.weight));
