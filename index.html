@@ -237,11 +237,24 @@
             </div>
 
             <div class="content-card" style="margin-bottom: 20px;">
-                <label for="filter-activity" style="display:block; margin-bottom:10px; color:var(--text-dim); font-size: 0.9rem;">Zobrazit statistiky pro:</label>
-                <select id="filter-activity">
-                    <option value="all">Všechny aktivity (Souhrn)</option>
-                    <option value="weight_progress">Tělesná váha</option>
-                </select>
+                <div style="margin-bottom: 15px;">
+                    <label for="filter-activity" style="display:block; margin-bottom:8px; color:var(--text-dim); font-size: 0.9rem;">Zobrazit aktivitu:</label>
+                    <select id="filter-activity">
+                        <option value="all">Všechny aktivity (Souhrn)</option>
+                        <option value="weight_progress">Tělesná váha</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="filter-time" style="display:block; margin-bottom:8px; color:var(--text-dim); font-size: 0.9rem;">Časové období:</label>
+                    <select id="filter-time">
+                        <option value="all">Celá historie (vše)</option>
+                        <option value="2026">Rok 2026</option>
+                        <option value="2026-03">Březen 2026</option>
+                        <option value="2026-02">Únor 2026</option>
+                        <option value="2025">Rok 2025</option>
+                    </select>
+                </div>
             </div>
 
             <div class="content-card" id="chart-container" style="display:none; padding: 1.5rem;">
