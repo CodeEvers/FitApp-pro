@@ -246,14 +246,15 @@
                 </div>
 
                 <div>
-                    <label for="filter-time" style="display:block; margin-bottom:8px; color:var(--text-dim); font-size: 0.9rem;">Časové období:</label>
-                    <select id="filter-time">
+                    <label for="filter-time" style="display:block; margin-bottom:8px; color:var(--text-dim); font-size: 0.9rem;">Časové období (napiš rok nebo vyber):</label>
+                    <input type="text" id="filter-time" list="time-options" placeholder="Např. 2026 nebo Celá historie" 
+                           style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text);">
+                    
+                    <datalist id="time-options">
                         <option value="all">Celá historie (vše)</option>
                         <option value="2026">Rok 2026</option>
-                        <option value="2026-03">Březen 2026</option>
-                        <option value="2026-02">Únor 2026</option>
                         <option value="2025">Rok 2025</option>
-                    </select>
+                    </datalist>
                 </div>
             </div>
 
