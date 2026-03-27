@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const ratingInput = document.getElementById('exercise-rating');
     const editIdInput = document.getElementById('edit-id');
     const filterSelect = document.getElementById('filter-activity');
+    const timeFilter = document.getElementById('filter-time'); // NOVÝ ELEMENT
     const hiddenDateInput = document.getElementById('hidden-date-input');
 
     // --- DOM ELEMENTY (JÍDLO A VÁHA) ---
@@ -396,12 +397,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- 7. PROGRESS A GRAFY (VÝPIS VŠECH AKTIVIT) ---
     filterSelect.addEventListener('change', () => updateProgressStats());
+    timeFilter.addEventListener('change', () => updateProgressStats()); // NOVÝ LISTENER
 
     function updateProgressStats() {
         const filterValue = filterSelect.value;
+        const timeValue = timeFilter.value; // NOVÁ HODNOTA FILTRU ČASU
         const statsWrapper = document.getElementById('monthly-stats-wrapper');
         
-        // Streak a měsíční kalorie (zůstává stejné)
+        // Streak (zůstává globální)
         const activeDates = [...new Set(dbExercises.map(ex => ex.date))].sort((a,b) => new Date(b) - new Date(a));
         let streak = 0;
         let checkDate = new Date();
@@ -416,20 +419,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         document.getElementById('streak-value').innerHTML = `<i class="fas fa-fire streak-fire"></i>${streak}`;
 
-        const now = new Date();
-        const thisMonthFood = dbFood.filter(f => {
-            let d = new Date(f.date);
-            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-        });
-        const thisMonthEx = dbExercises.filter(ex => {
-            let d = new Date(ex.date);
-            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-        });
-        const totalMonthKcal = thisMonthFood.reduce((s, f) => s + (Number(f.kcal) || 0), 0) + 
-                               thisMonthEx.reduce((s, ex) => s + (Number(ex.kcal) || 0), 0);
-        document.getElementById('total-kcal-value').innerText = totalMonthKcal.toLocaleString();
-
-        // Filtr menu
+        // Filtr menu pro aktivity (zůstává zachováno)
         const allNames = [...new Set(dbExercises.map(ex => ex.name))].sort();
         filterSelect.innerHTML = '<option value="all">Všechny aktivity (Souhrn)</option><option value="weight_progress">Tělesná váha</option>';
         allNames.forEach(n => {
@@ -438,8 +428,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             filterSelect.appendChild(opt);
         });
 
-        // Logika výpisu všech záznamů
-        let filtered = (filterValue === 'all' || filterValue === 'weight_progress') ? dbExercises : dbExercises.filter(ex => ex.name === filterValue);
+        // --- KOMBINOVANÉ FILTROVÁNÍ DAT (AKTIVITA + ČAS) ---
+        let filtered = dbExercises.filter(ex => {
+            const matchesActivity = (filterValue === 'all' || filterValue === 'weight_progress' || ex.name === filterValue);
+            const matchesTime = (timeValue === 'all' || ex.date.includes(timeValue));
+            return matchesActivity && matchesTime;
+        });
+
         statsWrapper.innerHTML = "";
         
         const months = {};
@@ -462,7 +457,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         Object.keys(months).sort((a, b) => new Date(months[b][0].date) - new Date(months[a][0].date)).forEach(monthKey => {
             const monthData = months[monthKey];
-            monthData.sort((a, b) => new Date(b.date) - new Date(a.date)); // Chronologicky v měsíci
+            monthData.sort((a, b) => new Date(b.date) - new Date(a.date)); 
 
             const uniqueDays = [...new Set(monthData.map(ex => ex.date))].length;
             const totalKcal = monthData.reduce((sum, ex) => sum + (Number(ex.kcal) || 0), 0);
@@ -500,39 +495,34 @@ document.addEventListener('DOMContentLoaded', async () => {
             statsWrapper.appendChild(card);
         });
 
-        // --- OPRAVENÁ DYNAMICKÁ STATISTIKA V HORNÍ LIŠTĚ ---
+        // --- DYNAMICKÉ STATISTIKY V HORNÍ LIŠTĚ (Zohledňují oba filtry) ---
         const dynamicVal = document.getElementById('dynamic-stat-value');
         const dynamicLabel = document.getElementById('dynamic-stat-label');
         const totalKcalVal = document.getElementById('total-kcal-value');
 
-        if (filterValue === 'all' || filterValue === 'weight_progress') {
-            // Globální pohled - ukazuje celkový součet kalorií ze všech jídel a tréninků za měsíc
-            dynamicVal.innerText = dbExercises.length;
-            dynamicLabel.innerText = "Celkem aktivit";
-            totalKcalVal.innerText = totalMonthKcal.toLocaleString();
-        } else {
-            // Specifický pohled na jeden sport
-            const filteredExs = dbExercises.filter(ex => ex.name === filterValue);
-            
-            // 1. Přepočítáme kalorie jen pro tento konkrétní sport
-            const sportOnlyKcal = filteredExs.reduce((s, ex) => s + (Number(ex.kcal) || 0), 0);
-            totalKcalVal.innerText = sportOnlyKcal.toLocaleString();
+        // Výpočet celkových kalorií pro vyfiltrovaná data
+        const currentKcal = filtered.reduce((s, ex) => s + (Number(ex.kcal) || 0), 0);
+        totalKcalVal.innerText = currentKcal.toLocaleString();
 
+        if (filterValue === 'all' || filterValue === 'weight_progress') {
+            dynamicVal.innerText = filtered.length;
+            dynamicLabel.innerText = "Celkem aktivit";
+        } else {
             const isC = /běh|kolo|plavání|kardio/i.test(filterValue);
             if (isC) {
-                const totalKm = filteredExs.reduce((s, ex) => s + (Number(ex.sets) || 0), 0);
+                const totalKm = filtered.reduce((s, ex) => s + (Number(ex.sets) || 0), 0);
                 dynamicVal.innerText = totalKm.toFixed(1);
                 dynamicLabel.innerText = "Celkem km";
             } else {
-                const maxW = Math.max(...filteredExs.map(ex => Number(ex.weight) || 0), 0);
+                const maxW = filtered.length > 0 ? Math.max(...filtered.map(ex => Number(ex.weight) || 0)) : 0;
                 dynamicVal.innerText = maxW;
-                dynamicLabel.innerText = "Life Max (kg)";
+                dynamicLabel.innerText = "Max váha (kg)";
             }
         }
-        updateChart(filterValue);
+        updateChart(filterValue, timeValue);
     }
 
-    function updateChart(name) {
+    function updateChart(name, timeRange) {
         const ctx = document.getElementById('progressChart');
         const container = document.getElementById('chart-container');
         if (!ctx) return;
@@ -542,12 +532,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         const isC = /běh|kolo|plavání|kardio/i.test(name);
 
         if (name === 'weight_progress') {
-            const sw = Object.keys(dbWeights).map(d => ({ d: new Date(d), v: dbWeights[d] })).filter(x => x.v).sort((a, b) => a.d - b.d);
+            const sw = Object.keys(dbWeights)
+                .map(d => ({ d: new Date(d), v: dbWeights[d], iso: new Date(d).toISOString().split('T')[0] }))
+                .filter(x => x.v && (timeRange === 'all' || x.iso.includes(timeRange)))
+                .sort((a, b) => a.d - b.d);
             labels = sw.map(x => x.d.toLocaleDateString('cs-CZ'));
             values = sw.map(x => x.v);
             labelTxt = "Váha (kg)";
         } else {
-            const sorted = dbExercises.filter(ex => ex.name === name).sort((a, b) => new Date(a.date) - new Date(b.date));
+            const sorted = dbExercises
+                .filter(ex => ex.name === name && (timeRange === 'all' || ex.date.includes(timeRange)))
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
             labels = sorted.map(ex => new Date(ex.date).toLocaleDateString('cs-CZ'));
             values = sorted.map(ex => Number(isC ? ex.sets : ex.weight));
             extraData = sorted.map(ex => Number(ex.reps));
