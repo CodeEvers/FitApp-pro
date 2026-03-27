@@ -39,6 +39,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const foodFInput = document.getElementById('food-f');
     const bodyWeightInput = document.getElementById('body-weight-input');
     const hiddenDateInputFood = document.getElementById('hidden-date-input-food');
+    
+    // Nové elementy pro přepínání váhy (přidej si tyto ID do HTML)
+    const btnOpenWeight = document.getElementById('btn-open-weight');
+    const weightSetup = document.getElementById('weight-setup'); 
 
     // --- DOM ELEMENTY (CÍLE) ---
     const btnOpenGoals = document.getElementById('btn-open-goals');
@@ -151,7 +155,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         const dateISO = currentDate.toISOString().split('T')[0];
         hiddenDateInput.value = dateISO;
         if(hiddenDateInputFood) hiddenDateInputFood.value = dateISO;
-        bodyWeightInput.value = dbWeights[currentDate.toDateString()] || "";
+
+        // LOGIKA DYNAMICKÉHO TLAČÍTKA VÁHY
+        const todayWeight = dbWeights[currentDate.toDateString()];
+        if (todayWeight) {
+            bodyWeightInput.value = todayWeight;
+            if (btnOpenWeight) btnOpenWeight.innerText = `Moje váha: ${todayWeight} kg (Upravit)`;
+            if (weightSetup) weightSetup.style.display = 'none'; // Schovat panel, pokud už je váha zadaná
+        } else {
+            bodyWeightInput.value = "";
+            if (btnOpenWeight) btnOpenWeight.innerText = "Zadat dnešní váhu";
+            if (weightSetup) weightSetup.style.display = 'none'; // Ve výchozím stavu schováno
+        }
 
         renderExercises();
         renderFood();
@@ -167,9 +182,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('prev-date-food')?.addEventListener('click', (e) => { e.stopPropagation(); currentDate.setDate(currentDate.getDate() - 1); updateDateDisplay(); });
     document.getElementById('next-date-food')?.addEventListener('click', (e) => { e.stopPropagation(); currentDate.setDate(currentDate.getDate() + 1); updateDateDisplay(); });
 
-    // --- 4. LOGIKA CÍLŮ (PŘIDÁNO) ---
+    // --- 4. LOGIKA CÍLŮ A VÁHY (PŘEPÍNÁNÍ) ---
+    btnOpenWeight?.addEventListener('click', () => {
+        weightSetup.style.display = weightSetup.style.display === 'none' ? 'block' : 'none';
+        goalsSetup.style.display = 'none'; // Zavřít druhý panel
+    });
+
     btnOpenGoals?.addEventListener('click', () => {
         goalsSetup.style.display = goalsSetup.style.display === 'none' ? 'block' : 'none';
+        if (weightSetup) weightSetup.style.display = 'none'; // Zavřít druhý panel
     });
 
     btnCalculateGoals?.addEventListener('click', async () => {
@@ -181,7 +202,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const goalModifier = parseInt(goalType.value);
 
         if (!age || !height || !weight) {
-            alert("Prosím zadej věk, výšku a váhu (v políčku Dnešní váha), abych mohl vypočítat tvůj cíl.");
+            alert("Prosím nejprve zadej a ulož svou váhu, abych mohl vypočítat tvůj cíl.");
+            if(weightSetup) weightSetup.style.display = 'block';
             return;
         }
 
@@ -206,10 +228,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- 5. JÍDLO A VÁHA ---
     document.getElementById('btn-save-weight').addEventListener('click', async () => {
         const weightVal = bodyWeightInput.value;
+        if (!weightVal) return alert("Prosím zadej váhu.");
+        
         const dateISO = currentDate.toISOString().split('T')[0];
         await _supabase.from('weights').upsert({ user_id: currentUser.id, date: dateISO, weight: weightVal });
         dbWeights[currentDate.toDateString()] = weightVal;
+        
         alert('Váha uložena!');
+        updateDateDisplay(); // Toto automaticky aktualizuje tlačítko a schová panel
     });
 
     document.getElementById('btn-add-food')?.addEventListener('click', async () => {
@@ -259,11 +285,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             tKcal += Number(f.kcal); tP += Number(f.p); tC += Number(f.c); tF += Number(f.f);
         });
 
-        // NAČTENÍ CÍLŮ
         const savedGoals = JSON.parse(localStorage.getItem('userGoals')) || { kcal: 2000, p: 150, c: 250, f: 70 };
         const diffKcal = savedGoals.kcal - tKcal;
 
-        // SUMMARY KARTA (Zobrazení zbývajících hodnot)
         const summaryHtml = `
             <div class="content-card" style="border-left: 5px solid var(--green); margin-bottom: 20px;">
                 <h3 style="text-align:center; margin-bottom:15px; font-size: 0.9rem; color: var(--text-dim);">Zbývá na dnešek</h3>
@@ -312,11 +336,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 rating: ratingInput.value
             };
             
-            if (editId) {
-                await _supabase.from('exercises').update(data).eq('id', editId);
-            } else {
-                await _supabase.from('exercises').insert([data]);
-            }
+            if (editId) await _supabase.from('exercises').update(data).eq('id', editId);
+            else await _supabase.from('exercises').insert([data]);
             
             await fetchData();   
             resetForm();         
