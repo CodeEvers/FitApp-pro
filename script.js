@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const timeFilter = document.getElementById('filter-time'); 
     const hiddenDateInput = document.getElementById('hidden-date-input');
 
-    // --- DYNAMICKÉ PŘEPÍNÁNÍ POLÍČEK (Běh -> Kilometry) ---
+    // --- DYNAMICKÉ PŘEPÍNÁNÍ POLÍČEK (Běh -> Tepovka) ---
     nameInput.addEventListener('input', () => {
         const val = nameInput.value.toLowerCase();
         const isKardio = /běh|kolo|plavání|kardio|brusle|chůze|row/i.test(val);
@@ -40,7 +40,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (isKardio) {
             setsInput.placeholder = "Kilometry (km)";
             repsInput.placeholder = "Čas (min)";
-            if (weightInput) weightInput.placeholder = "Kalorie (kcal) - volitelné";
+            // ZDE OPRAVENO: Místo kalorií nastavujeme Tepovku
+            if (weightInput) weightInput.placeholder = "Tepovka (bpm) - volitelné";
         } else {
             setsInput.placeholder = "Série";
             repsInput.placeholder = "Opakování";
@@ -378,7 +379,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const isC = /běh|kolo|plavání|kardio|brusle|chůze/i.test(ex.name);
                     const mainColor = isC ? "#38bdf8" : "#fb7185";
                     const bgColor = isC ? "rgba(56, 189, 248, 0.15)" : "rgba(251, 113, 133, 0.15)";
-                    let detail = isC ? `🏁 ${ex.sets} km | ⏱️ ${ex.reps} min` : `${ex.sets}×${ex.reps} | <strong>${ex.weight} kg</strong>`;
+                    // ZDE OPRAVENO: Pro kardio přidána ikonka srdíčka a bpm
+                    let detail = isC ? `🏁 ${ex.sets} km | ⏱️ ${ex.reps} min | ❤️ ${ex.weight} bpm` : `${ex.sets}×${ex.reps} | <strong>${ex.weight} kg</strong>`;
                     
                     html += `
                         <div class="exercise-item" style="background-color: ${bgColor}; border-left: none; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 15px 20px;">
@@ -416,7 +418,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- 7. PROGRESS A GRAFY (ÚPRAVA PRO VYHLEDÁVÁNÍ) ---
     filterSelect.addEventListener('change', () => updateProgressStats());
-    // Změněno na 'input' pro okamžitou reakci při psaní roku
     timeFilter.addEventListener('input', () => updateProgressStats()); 
 
     function updateProgressStats() {
@@ -448,7 +449,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         let filtered = dbExercises.filter(ex => {
             const matchesActivity = (filterValue === 'all' || filterValue === 'weight_progress' || ex.name === filterValue);
-            // Flexibilní filtr času - funguje pro "all", prázdné pole nebo shodu textu (např. "2024")
             const matchesTime = (timeValue === 'all' || timeValue === "" || ex.date.includes(timeValue));
             return matchesActivity && matchesTime;
         });
