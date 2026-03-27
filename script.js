@@ -165,6 +165,47 @@ document.addEventListener('DOMContentLoaded', async () => {
         alert('Váha uložena!');
     });
 
+    // PŘIDÁNO: Logika pro vkládání jídla
+    document.getElementById('btn-add-food')?.addEventListener('click', async () => {
+        const name = foodNameInput.value.trim();
+        const kcal = foodKcalInput.value;
+        const p = foodPInput.value || 0;
+        const c = foodCInput.value || 0;
+        const f = foodFInput.value || 0;
+        const dateISO = currentDate.toISOString().split('T')[0];
+
+        if (!name || !kcal) {
+            alert('Vyplň prosím název jídla a kalorie.');
+            return;
+        }
+
+        if (currentUser) {
+            const { error } = await _supabase.from('food').insert([{
+                user_id: currentUser.id,
+                name: name,
+                kcal: parseInt(kcal),
+                p: parseFloat(p),
+                c: parseFloat(c),
+                f: parseFloat(f),
+                date: dateISO
+            }]);
+
+            if (error) {
+                alert('Chyba při ukládání jídla: ' + error.message);
+            } else {
+                // Vyčistit pole
+                foodNameInput.value = "";
+                foodKcalInput.value = "";
+                foodPInput.value = "";
+                foodCInput.value = "";
+                foodFInput.value = "";
+                
+                alert('Jídlo uloženo!');
+                await fetchData(); // Znovu načte data a překreslí seznam
+            }
+        }
+    });
+
     // --- 5. TRÉNINK (LOGIKA PŘIDÁVÁNÍ) ---
     document.getElementById('btn-add-exercise').addEventListener('click', async () => {
         const name = nameInput.value.trim();
@@ -193,7 +234,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderExercises();   // Ihned vykreslí změnu v seznamu
         }
     });
-
+    
     function renderFood() {
         const wrapper = document.getElementById('food-list-wrapper');
         if (!wrapper) return;
@@ -384,9 +425,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             const sorted = dbExercises.filter(ex => ex.name === name).sort((a, b) => new Date(a.date) - new Date(b.date));
             labels = sorted.map(ex => new Date(ex.date).toLocaleDateString('cs-CZ'));
-            // Graf pro kardio teď zobrazuje KM (sets), pro ostatní VÁHU
             values = sorted.map(ex => Number(isC ? ex.sets : ex.weight));
-            // Uložíme si minuty (reps) jako extra informaci pro bublinu (tooltip)
             extraData = sorted.map(ex => Number(ex.reps));
             labelTxt = isC ? "Vzdálenost (km)" : "Váha (kg)";
         }
@@ -406,7 +445,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     tension: 0.3, 
                     fill: true, 
                     backgroundColor: 'rgba(56, 189, 248, 0.1)',
-                    extra: extraData // Naše skrytá data
+                    extra: extraData 
                 }]
             },
             options: {
