@@ -501,3 +501,67 @@ button { border: none; cursor: pointer; transition: 0.2s; font-family: inherit; 
     padding: 10px;
     border-radius: 8px;
 }
+
+/* --- NOVÉ ÚPRAVY PRO PROGRESS (STREAK, SUMY, SEZNAM AKTIVIT) --- */
+.stats-grid-modern {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 25px 15px;
+    border-radius: 1.5rem;
+    margin-bottom: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.stat-card-modern {
+    text-align: center;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat-card-modern:last-child {
+    border-right: none;
+}
+
+.stat-value-big {
+    font-size: 2.2rem;
+    font-weight: 800;
+    display: block;
+    color: var(--text-main);
+    line-height: 1;
+}
+
+.stat-label-sub {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-top: 10px;
+    display: block;
+}
+
+.streak-fire {
+    color: #fb923c;
+    margin-right: 5px;
+    filter: drop-shadow(0 0 8px rgba(251, 146, 60, 0.5));
+}
+
+.full-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.history-item {
+    background: rgba(255, 255, 255, 0.02);
+    padding: 15px 20px;
+    border-radius: 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: 0.2s;
+}
+
+.history-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
