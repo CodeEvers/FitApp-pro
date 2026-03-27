@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const authSubtitle = document.getElementById('auth-subtitle');
     const switchText = document.getElementById('auth-switch-text');
 
-    // --- 1. AUTH LOGIKA (LOGIN / REGISTRACE) ---
+    // --- 1. AUTH LOGIKA ---
     showScreen('screen-login');
 
     btnSwitch.addEventListener('click', () => {
@@ -197,7 +197,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 foodPInput.value = "";
                 foodCInput.value = "";
                 foodFInput.value = "";
-                
                 alert('Jídlo uloženo!');
                 await fetchData(); 
             }
@@ -267,7 +266,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.deleteFood = async (id) => { if(confirm('Smazat jídlo?')) { await _supabase.from('food').delete().eq('id', id); await fetchData(); } };
 
-    // --- OSTATNÍ FUNKCE ---
     nameInput.addEventListener('input', (e) => {
         const isCardio = /běh|kolo|plavání|kardio|brusle|chůze/i.test(e.target.value);
         setsInput.placeholder = isCardio ? "Km" : "Série";
@@ -275,7 +273,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         weightInput.placeholder = isCardio ? "Tep (avg)" : "Váha (kg)";
     });
 
-    // --- UPRAVENÁ FUNKCE S BAREVNÝM ROZLIŠENÍM ---
+    // --- UPRAVENÁ FUNKCE S PODBARVENÍM (ŽÁDNÁ BOČNÍ ČÁRKA) ---
     function renderExercises() {
         const wrapper = document.getElementById('exercise-list-wrapper');
         if (!wrapper) return;
@@ -290,16 +288,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let html = `<div class="phase-group"><div class="phase-title">${phase}</div><div class="phase-content">`;
                 phaseExs.forEach(ex => {
                     const isC = /běh|kolo|plavání|kardio|brusle|chůze/i.test(ex.name);
-                    const borderColor = isC ? "#38bdf8" : "#fb7185"; // Modrá pro kardio, růžová pro sílu
+                    
+                    // Barvy: Modrá pro kardio, růžová pro ostatní
+                    const mainColor = isC ? "#38bdf8" : "#fb7185";
+                    // Podbarvení (15% průhlednost)
+                    const bgColor = isC ? "rgba(56, 189, 248, 0.15)" : "rgba(251, 113, 133, 0.15)";
                     
                     let detail = isC ? `🏁 ${ex.sets} km | ⏱️ ${ex.reps} min` : `${ex.sets}×${ex.reps} | <strong>${ex.weight} kg</strong>`;
                     
                     html += `
-                        <div class="exercise-item" style="border-left: 5px solid ${borderColor};">
+                        <div class="exercise-item" style="background-color: ${bgColor}; border-left: none; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 15px 20px;">
                             <div class="exercise-info">
-                                <h4 style="color: ${borderColor};">${ex.name}</h4>
-                                <p>${detail} ${ex.kcal ? `<span style="margin-left:10px;">🔥 ${ex.kcal} kcal</span>` : ''}</p>
-                                ${ex.rating ? `<div class="rating-tag">${ex.rating}</div>` : ''}
+                                <h4 style="color: ${mainColor}; margin-bottom: 4px;">${ex.name}</h4>
+                                <p style="color: ${mainColor}; opacity: 0.9;">${detail} ${ex.kcal ? `<span style="margin-left:10px;">🔥 ${ex.kcal} kcal</span>` : ''}</p>
+                                ${ex.rating ? `<div class="rating-tag" style="background: rgba(255,255,255,0.1); color: #fff;">${ex.rating}</div>` : ''}
                             </div>
                             <div class="action-btns">
                                 <button class="edit-exercise" onclick="editEx(${ex.id})"><i class="fas fa-edit"></i></button>
@@ -327,7 +329,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.deleteEx = async (id) => { if(confirm('Opravdu smazat?')) { await _supabase.from('exercises').delete().eq('id', id); await fetchData(); } };
 
-    // --- 6. PROGRESS (ZŮSTÁVÁ STEJNÝ) ---
+    // --- 6. PROGRESS ---
     filterSelect.addEventListener('change', () => updateProgressStats());
 
     function updateProgressStats() {
@@ -372,7 +374,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const isC = /běh|kolo|plavání|kardio/i.test(ex.name);
                 const val = Number(isC ? ex.reps : ex.weight) || 0;
                 const kmValue = isC ? (Number(ex.sets) || 0) : 0;
-
                 if (!monthBest[ex.name]) {
                     monthBest[ex.name] = { val: val, unit: isC ? "min" : "kg", km: kmValue };
                 } else {
@@ -396,7 +397,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const isLB = monthBest[exName].val === lifeMax[exName];
                         const isC = /běh|kolo|plavání|kardio/i.test(exName);
                         const valDisplay = isC ? `${monthBest[exName].val} ${monthBest[exName].unit} (${monthBest[exName].km} km)` : `${monthBest[exName].val} ${monthBest[exName].unit}`;
-                        
                         return `<div class="record-item">
                             <span style="font-weight:600;">${exName}</span>
                             <div class="record-tags">
