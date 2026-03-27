@@ -165,7 +165,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         alert('Váha uložena!');
     });
 
-    // PŘIDÁNO: Logika pro vkládání jídla
     document.getElementById('btn-add-food')?.addEventListener('click', async () => {
         const name = foodNameInput.value.trim();
         const kcal = foodKcalInput.value;
@@ -193,7 +192,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (error) {
                 alert('Chyba při ukládání jídla: ' + error.message);
             } else {
-                // Vyčistit pole
                 foodNameInput.value = "";
                 foodKcalInput.value = "";
                 foodPInput.value = "";
@@ -201,7 +199,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 foodFInput.value = "";
                 
                 alert('Jídlo uloženo!');
-                await fetchData(); // Znovu načte data a překreslí seznam
+                await fetchData(); 
             }
         }
     });
@@ -229,9 +227,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await _supabase.from('exercises').insert([data]);
             }
             
-            await fetchData();   // Načte nová data
-            resetForm();         // Vyčistí políčka
-            renderExercises();   // Ihned vykreslí změnu v seznamu
+            await fetchData();   
+            resetForm();         
+            renderExercises();   
         }
     });
     
@@ -277,6 +275,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         weightInput.placeholder = isCardio ? "Tep (avg)" : "Váha (kg)";
     });
 
+    // --- UPRAVENÁ FUNKCE S BAREVNÝM ROZLIŠENÍM ---
     function renderExercises() {
         const wrapper = document.getElementById('exercise-list-wrapper');
         if (!wrapper) return;
@@ -290,12 +289,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (phaseExs.length > 0) {
                 let html = `<div class="phase-group"><div class="phase-title">${phase}</div><div class="phase-content">`;
                 phaseExs.forEach(ex => {
-                    const isC = /běh|kolo|plavání|kardio/i.test(ex.name);
+                    const isC = /běh|kolo|plavání|kardio|brusle|chůze/i.test(ex.name);
+                    const borderColor = isC ? "#38bdf8" : "#fb7185"; // Modrá pro kardio, růžová pro sílu
+                    
                     let detail = isC ? `🏁 ${ex.sets} km | ⏱️ ${ex.reps} min` : `${ex.sets}×${ex.reps} | <strong>${ex.weight} kg</strong>`;
+                    
                     html += `
-                        <div class="exercise-item">
+                        <div class="exercise-item" style="border-left: 5px solid ${borderColor};">
                             <div class="exercise-info">
-                                <h4>${ex.name}</h4>
+                                <h4 style="color: ${borderColor};">${ex.name}</h4>
                                 <p>${detail} ${ex.kcal ? `<span style="margin-left:10px;">🔥 ${ex.kcal} kcal</span>` : ''}</p>
                                 ${ex.rating ? `<div class="rating-tag">${ex.rating}</div>` : ''}
                             </div>
@@ -325,7 +327,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.deleteEx = async (id) => { if(confirm('Opravdu smazat?')) { await _supabase.from('exercises').delete().eq('id', id); await fetchData(); } };
 
-    // --- 6. PROGRESS (OPRAVENÁ LOGIKA) ---
+    // --- 6. PROGRESS (ZŮSTÁVÁ STEJNÝ) ---
     filterSelect.addEventListener('change', () => updateProgressStats());
 
     function updateProgressStats() {
