@@ -500,15 +500,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             statsWrapper.appendChild(card);
         });
 
-        // Dynamická statistika v horní liště
+        // --- OPRAVENÁ DYNAMICKÁ STATISTIKA V HORNÍ LIŠTĚ ---
         const dynamicVal = document.getElementById('dynamic-stat-value');
         const dynamicLabel = document.getElementById('dynamic-stat-label');
+        const totalKcalVal = document.getElementById('total-kcal-value');
+
         if (filterValue === 'all' || filterValue === 'weight_progress') {
+            // Globální pohled - ukazuje celkový součet kalorií ze všech jídel a tréninků za měsíc
             dynamicVal.innerText = dbExercises.length;
             dynamicLabel.innerText = "Celkem aktivit";
+            totalKcalVal.innerText = totalMonthKcal.toLocaleString();
         } else {
-            const isC = /běh|kolo|plavání|kardio/i.test(filterValue);
+            // Specifický pohled na jeden sport
             const filteredExs = dbExercises.filter(ex => ex.name === filterValue);
+            
+            // 1. Přepočítáme kalorie jen pro tento konkrétní sport
+            const sportOnlyKcal = filteredExs.reduce((s, ex) => s + (Number(ex.kcal) || 0), 0);
+            totalKcalVal.innerText = sportOnlyKcal.toLocaleString();
+
+            const isC = /běh|kolo|plavání|kardio/i.test(filterValue);
             if (isC) {
                 const totalKm = filteredExs.reduce((s, ex) => s + (Number(ex.sets) || 0), 0);
                 dynamicVal.innerText = totalKm.toFixed(1);
