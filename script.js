@@ -29,8 +29,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     const ratingInput = document.getElementById('exercise-rating');
     const editIdInput = document.getElementById('edit-id');
     const filterSelect = document.getElementById('filter-activity');
-    const timeFilter = document.getElementById('filter-time'); // NOVÝ ELEMENT
+    const timeFilter = document.getElementById('filter-time'); 
     const hiddenDateInput = document.getElementById('hidden-date-input');
+
+    // --- DYNAMICKÉ PŘEPÍNÁNÍ POLÍČEK (Běh -> Kilometry) ---
+    // Tato funkce hlídá změnu v názvu aktivity a mění popisky
+    nameInput.addEventListener('input', () => {
+        const val = nameInput.value.toLowerCase();
+        // Definujeme, co považujeme za kardio
+        const isKardio = /běh|kolo|plavání|kardio|brusle|chůze|row/i.test(val);
+
+        if (isKardio) {
+            setsInput.placeholder = "Kilometry (km)";
+            repsInput.placeholder = "Čas (min)";
+            if (weightInput) weightInput.placeholder = "Kalorie (kcal) - volitelné";
+        } else {
+            setsInput.placeholder = "Série";
+            repsInput.placeholder = "Opakování";
+            if (weightInput) weightInput.placeholder = "Váha (kg)";
+        }
+    });
 
     // --- DOM ELEMENTY (JÍDLO A VÁHA) ---
     const foodNameInput = document.getElementById('food-name');
@@ -41,7 +59,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const bodyWeightInput = document.getElementById('body-weight-input');
     const hiddenDateInputFood = document.getElementById('hidden-date-input-food');
     
-    // Nové elementy pro přepínání váhy
     const btnOpenWeight = document.getElementById('btn-open-weight');
     const weightSetup = document.getElementById('weight-setup'); 
 
@@ -136,6 +153,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         editIdInput.value = "";
         document.getElementById('form-title').innerText = "Co jsi dnes dělal?";
         document.getElementById('btn-text').innerText = "Přidat do deníku";
+        // Resetujeme i placeholdery na původní hodnoty
+        setsInput.placeholder = "Série";
+        repsInput.placeholder = "Opakování";
+        weightInput.placeholder = "Váha (kg)";
     }
 
     document.querySelectorAll('.card').forEach(card => {
@@ -390,6 +411,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             ratingInput.value = ex.rating; editIdInput.value = ex.id;
             document.getElementById('form-title').innerText = "Upravit záznam";
             document.getElementById('btn-text').innerText = "Uložit změny";
+            // Při editaci také zkontrolujeme, zda jde o kardio pro správné placeholdery
+            nameInput.dispatchEvent(new Event('input'));
         }
     };
 
@@ -397,14 +420,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- 7. PROGRESS A GRAFY (VÝPIS VŠECH AKTIVIT) ---
     filterSelect.addEventListener('change', () => updateProgressStats());
-    timeFilter.addEventListener('change', () => updateProgressStats()); // NOVÝ LISTENER
+    timeFilter.addEventListener('change', () => updateProgressStats()); 
 
     function updateProgressStats() {
         const filterValue = filterSelect.value;
-        const timeValue = timeFilter.value; // NOVÁ HODNOTA FILTRU ČASU
+        const timeValue = timeFilter.value; 
         const statsWrapper = document.getElementById('monthly-stats-wrapper');
         
-        // Streak (zůstává globální)
         const activeDates = [...new Set(dbExercises.map(ex => ex.date))].sort((a,b) => new Date(b) - new Date(a));
         let streak = 0;
         let checkDate = new Date();
@@ -419,7 +441,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         document.getElementById('streak-value').innerHTML = `<i class="fas fa-fire streak-fire"></i>${streak}`;
 
-        // Filtr menu pro aktivity (zůstává zachováno)
         const allNames = [...new Set(dbExercises.map(ex => ex.name))].sort();
         filterSelect.innerHTML = '<option value="all">Všechny aktivity (Souhrn)</option><option value="weight_progress">Tělesná váha</option>';
         allNames.forEach(n => {
@@ -428,7 +449,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             filterSelect.appendChild(opt);
         });
 
-        // --- KOMBINOVANÉ FILTROVÁNÍ DAT (AKTIVITA + ČAS) ---
         let filtered = dbExercises.filter(ex => {
             const matchesActivity = (filterValue === 'all' || filterValue === 'weight_progress' || ex.name === filterValue);
             const matchesTime = (timeValue === 'all' || ex.date.includes(timeValue));
@@ -445,7 +465,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             months[key].push(ex);
         });
 
-        // Výpočet LifeBest pro odznáčky
         const lifeMax = {};
         dbExercises.forEach(ex => {
             const isC = /běh|kolo|plavání|kardio|chůze/i.test(ex.name);
@@ -495,12 +514,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             statsWrapper.appendChild(card);
         });
 
-        // --- DYNAMICKÉ STATISTIKY V HORNÍ LIŠTĚ (Zohledňují oba filtry) ---
         const dynamicVal = document.getElementById('dynamic-stat-value');
         const dynamicLabel = document.getElementById('dynamic-stat-label');
         const totalKcalVal = document.getElementById('total-kcal-value');
 
-        // Výpočet celkových kalorií pro vyfiltrovaná data
         const currentKcal = filtered.reduce((s, ex) => s + (Number(ex.kcal) || 0), 0);
         totalKcalVal.innerText = currentKcal.toLocaleString();
 
