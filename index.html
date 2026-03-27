@@ -134,8 +134,12 @@
             <button class="back-btn" data-target="screen-dashboard"><i class="fas fa-chevron-left"></i> Zpět</button>
             <h1>🍎 Jídlo a Váha</h1>
 
-            <button id="btn-open-goals" class="add-btn" style="background: var(--blue); margin-bottom: 20px;">
+            <button id="btn-open-goals" class="add-btn" style="background: var(--blue); margin-bottom: 10px;">
                 <i class="fas fa-crosshair"></i> Nastavit můj denní cíl
+            </button>
+            
+            <button id="btn-open-weight" class="add-btn" style="background: var(--orange); margin-bottom: 20px;">
+                <i class="fas fa-weight"></i> Zadat dnešní váhu
             </button>
 
             <div id="goals-setup" class="content-card" style="display: none; border: 1px solid var(--blue); margin-bottom: 20px;">
@@ -174,7 +178,7 @@
                 <button id="next-date-food" class="date-nav-btn next-btn"><i class="fas fa-chevron-right"></i></button>
             </div>
 
-            <div class="content-card" id="weight-card" style="border-left: 5px solid var(--orange);">
+            <div class="content-card" id="weight-setup" style="display: none; border-left: 5px solid var(--orange); margin-bottom: 20px;">
                 <h3>⚖️ Dnešní váha</h3>
                 <div class="weight-row" style="display: flex; gap: 10px;">
                     <input type="number" id="body-weight-input" placeholder="Tvoje váha (kg)" step="0.1">
