@@ -646,11 +646,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             - Pokud má pauzu, motivuj ho.
             - Piš česky, stručně (max 3-4 věty) a buď konkrétní a lidský.`;
 
-           const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+           const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + GEMINI_API_KEY, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json' 
+                },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }]
+                    contents: [{ 
+                        parts: [{ 
+                            text: prompt 
+                        }] 
+                    }]
                 })
             });
 
