@@ -4,7 +4,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 // --- KONFIGURACE GEMINI AI ---
 // Používáme .replace(/\s/g, ''), aby v klíči nezůstala ani jedna neviditelná mezera
-const GEMINI_API_KEY = 'AIzaSyAAnm-ecqdJH1vgGO1njjnGFbGDtNwX0Bg'.replace(/\s/g, '');
+const GEMINI_API_KEY = 'AIzaSyAOi8oQc2-vk7XRUYxMlh-MDaY4WQ9-4aI'.replace(/\s/g, '');
 
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
@@ -645,7 +645,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 Napiš česky stručné doporučení na dnešek (max 3 věty).`;
 
                 // Volání Gemini API
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY.trim()}`;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_API_KEY.trim()}`;
 
                 const response = await fetch(url, {
                     method: 'POST',
