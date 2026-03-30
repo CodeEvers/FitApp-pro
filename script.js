@@ -3,7 +3,7 @@ const SUPABASE_URL = 'https://cafvdjmjwevbmunydhtq.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhZnZkam1qd2V2Ym11bnlkaHRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1MjU0MDMsImV4cCI6MjA5MDEwMTQwM30.BVQNZhecgDD_s3S2jQ9kJ16_M0R54obbmYIcftx0c08';
 
 // --- KONFIGURACE GEMINI AI ---
-const GEMINI_API_KEY = 'AIzaSyAzMlgocC7RvMu_Qnht_xWDXZSdvBNa1H4'.trim();
+const GEMINI_API_KEY = 'AIzaSyAzMlgocC7RvMu_Qnht_xWDXZSdvBNa1H4'.replace(/\s/g, '');
 
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
