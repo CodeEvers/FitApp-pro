@@ -1,5 +1,6 @@
 // --- KONFIGURACE SUPABASE ---
 const SUPABASE_URL = 'https://cafvdjmjwevbmunydhtq.supabase.co';
+// POZOR: Tento klíč je veřejný (anon), to je v pořádku. API klíč ke Gemini zde NESMÍ BÝT.
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhZnZkam1qd2V2Ym11bnlkaHRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1MjU0MDMsImV4cCI6MjA5MDEwMTQwM30.BVQNZhecgDD_s3S2jQ9kJ16_M0R54obbmYIcftx0c08';
 
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -612,7 +613,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // --- 8. AI TRENÉR (ZABEZPEČENO PŘES SUPABASE EDGE FUNCTIONS) ---
+    // --- 8. AI TRENÉR (OPRAVENO PRO GEMINI 2.0 A SUPABASE EDGE FUNCTIONS) ---
     if (btnGeneratePlan) {
         btnGeneratePlan.addEventListener('click', async () => {
             aiLoader.style.display = 'block';
@@ -632,26 +633,33 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ? recentEx.map(ex => `- ${ex.date}: ${ex.name} (${ex.sets}x${ex.reps}, ${ex.weight}kg)`).join('\n')
                     : "Uživatel zatím nemá žádné záznamy tréninků.";
 
-                const prompt = `Jsi profesionální fitness trenér. Na základě této historie:
+                const prompt = `Jsi profesionální fitness trenér. Na základě této historie tréninků:
                 ${workoutHistory}
-                Napiš česky stručné doporučení na dnešek (max 3 věty).`;
+                Napiš v češtině velmi stručné a motivující doporučení na dnešek (max 3 věty).`;
 
-                // 2. Volání vaší nové Edge Funkce v Supabase (ŽÁDNÝ API KLÍČ V KÓDU)
+                // 2. Volání tvé Edge Funkce v Supabase (jméno funkce musí odpovídat tomu, jak jsi ji pojmenoval v Supabase)
+                // Předpokládáme, že funkce se jmenuje 'gemini-coach'
                 const { data, error } = await _supabase.functions.invoke('gemini-coach', {
                     body: { prompt: prompt }
                 });
 
                 if (error) throw new Error(error.message);
 
-                // 3. Zpracování odpovědi od Gemini (přes funkci)
-                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                aiTextOutput.innerText = text || "Trenér se na dnešek zamyslel a nemá slova.";
+                // 3. Zpracování odpovědi od Gemini (podle tvé struktury ve funkci)
+                // Gemini 2.0 vrací text v candidates[0].content.parts[0].text
+                const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || data?.text;
+                
+                if (text) {
+                    aiTextOutput.innerText = text;
+                } else {
+                    aiTextOutput.innerText = "Trenér dnes nemá slov, zkus to prosím za chvíli.";
+                }
+
                 aiResponseArea.style.display = 'block';
 
             } catch (err) {
                 console.error("AI Error:", err);
-                aiTextOutput.innerText = "Trenér si dává pauzu: " + err.message;
-                aiResponseArea.style.display = 'block';
+                alert("Nepodařilo se spojit s trenérem: " + err.message);
             } finally {
                 aiLoader.style.display = 'none';
                 btnGeneratePlan.disabled = false;
