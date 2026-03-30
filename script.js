@@ -43,7 +43,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (isKardio) {
             setsInput.placeholder = "Kilometry (km)";
             repsInput.placeholder = "Čas (min)";
-            // ZDE OPRAVENO: Místo kalorií nastavujeme Tepovku
             if (weightInput) weightInput.placeholder = "Tepovka (bpm) - volitelné";
         } else {
             setsInput.placeholder = "Série";
@@ -131,18 +130,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function fetchData() {
         if (!currentUser) return;
 
-        // --- ODEMKNUTÍ AI TRENÉRA PRO ADMINA ---
-        const adminEmail = 'majitel@test.cz'; // <--- TADY NAPPIŠ SVŮJ REGISTRAČNÍ EMAIL
+        // --- SEZNAM UŽIVATELŮ S PŘÍSTUPEM K AI ---
+        const allowedAiUsers = [
+            'majitel@test.cz', // <--- TADY NAPPIŠ SVŮJ REGISTRAČNÍ EMAIL
+            'cerny.mi@centrum.cz'  // Sem můžeš v budoucnu připisovat další e-maily
+        ];
+
         const aiCard = document.querySelector('.card[data-target="screen-ai"]');
 
         if (aiCard) {
-            if (currentUser.email === adminEmail) {
+            if (allowedAiUsers.includes(currentUser.email)) {
                 aiCard.classList.remove('locked');
                 aiCard.style.filter = 'none';
                 aiCard.style.opacity = '1';
                 aiCard.style.pointerEvents = 'auto';
             } else {
                 aiCard.classList.add('locked');
+                aiCard.style.filter = 'grayscale(1)';
+                aiCard.style.opacity = '0.5';
+                aiCard.style.pointerEvents = 'none';
             }
         }
 
@@ -398,7 +404,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const isC = /běh|kolo|plavání|kardio|brusle|chůze/i.test(ex.name);
                     const mainColor = isC ? "#38bdf8" : "#fb7185";
                     const bgColor = isC ? "rgba(56, 189, 248, 0.15)" : "rgba(251, 113, 133, 0.15)";
-                    // ZDE OPRAVENO: Pro kardio přidána ikonka srdíčka a bpm
                     let detail = isC ? `🏁 ${ex.sets} km | ⏱️ ${ex.reps} min | ❤️ ${ex.weight} bpm` : `${ex.sets}×${ex.reps} | <strong>${ex.weight} kg</strong>`;
                     
                     html += `
@@ -621,7 +626,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         btn.disabled = true;
 
         try {
-            // 1. STÁHNEME DATA ZE SUPABASE
             const { data: recentEx } = await _supabase
                 .from('exercises')
                 .select('*')
@@ -629,13 +633,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .order('date', { ascending: false })
                 .limit(10);
 
-            // 2. VYTVOŘÍME KONTEXT
             const workoutHistory = recentEx && recentEx.length > 0 
                 ? recentEx.map(ex => `- ${ex.date}: ${ex.name} (${ex.sets}x${ex.reps}, ${ex.weight}kg, pocity: ${ex.rating || 'neuvedeno'})`).join('\n')
                 : "Uživatel zatím nemá žádné záznamy tréninků.";
 
             const prompt = `Jsi profesionální fitness trenér a stratég. Tvůj svěřenec chce radu na dnešek.
-            Jeho historie tréninků:
+            His historie tréninků:
             ${workoutHistory}
             
             Na základě těchto dat mu napiš doporučení na dnešek. 
@@ -643,7 +646,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             - Pokud má pauzu, motivuj ho.
             - Piš česky, stručně (max 3-4 věty) a buď konkrétní a lidský.`;
 
-            // 3. ZAVOLÁME GEMINI API
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -652,19 +654,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 })
             });
 
-            const result = await response.json();
+            const data = await response.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "Trenér teď nemá signál, zkus to později.";
             
-            if (result.candidates && result.candidates[0].content.parts[0].text) {
-                outputText.innerText = result.candidates[0].content.parts[0].text;
-                outputArea.style.display = 'block';
-            } else {
-                throw new Error("AI nevrátilo platnou odpověď.");
-            }
-
-        } catch (error) {
-            console.error("AI Error:", error);
-            outputText.innerText = "Chyba při spojení s AI trenérem. Zkontroluj API klíč.";
+            outputText.innerText = text;
             outputArea.style.display = 'block';
+
+        } catch (err) {
+            console.error(err);
+            alert("Chyba při komunikaci s AI trenérem.");
         } finally {
             loader.style.display = 'none';
             btn.disabled = false;
