@@ -130,6 +130,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- 2. DATA A POMOCNÉ FUNKCE ---
     async function fetchData() {
         if (!currentUser) return;
+
+        // --- ODEMKNUTÍ AI TRENÉRA PRO ADMINA ---
+        const adminEmail = 'majitel@test.cz'; // <--- TADY NAPPIŠ SVŮJ REGISTRAČNÍ EMAIL
+        const aiCard = document.querySelector('.card[data-target="screen-ai"]');
+
+        if (aiCard) {
+            if (currentUser.email === adminEmail) {
+                aiCard.classList.remove('locked');
+                aiCard.style.filter = 'none';
+                aiCard.style.opacity = '1';
+                aiCard.style.pointerEvents = 'auto';
+            } else {
+                aiCard.classList.add('locked');
+            }
+        }
+
         const { data: ex } = await _supabase.from('exercises').select('*').eq('user_id', currentUser.id);
         const { data: fd } = await _supabase.from('food').select('*').eq('user_id', currentUser.id);
         const { data: wg } = await _supabase.from('weights').select('*').eq('user_id', currentUser.id);
@@ -655,9 +671,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Listener pro AI tlačítko
     document.getElementById('btn-generate-plan')?.addEventListener('click', getAiRecommendation);
 
-    // --- INICIALIZACE ---
-    updateDateDisplay();
 });
