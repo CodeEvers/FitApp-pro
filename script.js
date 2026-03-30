@@ -3,6 +3,7 @@ const SUPABASE_URL = 'https://cafvdjmjwevbmunydhtq.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhZnZkam1qd2V2Ym11bnlkaHRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1MjU0MDMsImV4cCI6MjA5MDEwMTQwM30.BVQNZhecgDD_s3S2jQ9kJ16_M0R54obbmYIcftx0c08';
 
 // --- KONFIGURACE GEMINI AI ---
+// Používáme .replace(/\s/g, ''), aby v klíči nezůstala ani jedna neviditelná mezera
 const GEMINI_API_KEY = 'AIzaSyAzMlgocC7RvMu_Qnht_xWDXZSdvBNa1H4'.replace(/\s/g, '');
 
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -36,20 +37,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     const hiddenDateInput = document.getElementById('hidden-date-input');
 
     // --- DYNAMICKÉ PŘEPÍNÁNÍ POLÍČEK (Běh -> Tepovka) ---
-    nameInput.addEventListener('input', () => {
-        const val = nameInput.value.toLowerCase();
-        const isKardio = /běh|kolo|plavání|kardio|brusle|chůze|row/i.test(val);
+    if (nameInput) {
+        nameInput.addEventListener('input', () => {
+            const val = nameInput.value.toLowerCase();
+            const isKardio = /běh|kolo|plavání|kardio|brusle|chůze|row/i.test(val);
 
-        if (isKardio) {
-            setsInput.placeholder = "Kilometry (km)";
-            repsInput.placeholder = "Čas (min)";
-            if (weightInput) weightInput.placeholder = "Tepovka (bpm) - volitelné";
-        } else {
-            setsInput.placeholder = "Série";
-            repsInput.placeholder = "Opakování";
-            if (weightInput) weightInput.placeholder = "Váha (kg)";
-        }
-    });
+            if (isKardio) {
+                setsInput.placeholder = "Kilometry (km)";
+                repsInput.placeholder = "Čas (min)";
+                if (weightInput) weightInput.placeholder = "Tepovka (bpm) - volitelné";
+            } else {
+                setsInput.placeholder = "Série";
+                repsInput.placeholder = "Opakování";
+                if (weightInput) weightInput.placeholder = "Váha (kg)";
+            }
+        });
+    }
 
     // --- DOM ELEMENTY (JÍDLO A VÁHA) ---
     const foodNameInput = document.getElementById('food-name');
@@ -79,6 +82,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const authTitle = document.getElementById('auth-title');
     const authSubtitle = document.getElementById('auth-subtitle');
     const switchText = document.getElementById('auth-switch-text');
+
+    // --- AI TRENÉR ELEMENTY ---
+    const btnGeneratePlan = document.getElementById('btn-generate-plan');
+    const aiLoader = document.getElementById('ai-loader');
+    const aiResponseArea = document.getElementById('ai-response-area');
+    const aiTextOutput = document.getElementById('ai-text-output');
 
     // --- 1. AUTH LOGIKA ---
     showScreen('screen-login');
@@ -130,10 +139,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function fetchData() {
         if (!currentUser) return;
 
-        // --- SEZNAM UŽIVATELŮ S PŘÍSTUPEM K AI ---
         const allowedAiUsers = [
-            'majitel@test.cz', // <--- TADY NAPPIŠ SVŮJ REGISTRAČNÍ EMAIL
-            'cerny.mi@centrum.cz'  // Sem můžeš v budoucnu připisovat další e-maily
+            'majitel@test.cz', 
+            'cerny.mi@centrum.cz'
         ];
 
         const aiCard = document.querySelector('.card[data-target="screen-ai"]');
@@ -440,9 +448,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.deleteEx = async (id) => { if(confirm('Opravdu smazat?')) { await _supabase.from('exercises').delete().eq('id', id); await fetchData(); } };
 
-    // --- 7. PROGRESS A GRAFY (ÚPRAVA PRO VYHLEDÁVÁNÍ) ---
-    filterSelect.addEventListener('change', () => updateProgressStats());
-    timeFilter.addEventListener('input', () => updateProgressStats()); 
+    // --- 7. PROGRESS A GRAFY ---
+    if (filterSelect) filterSelect.addEventListener('change', () => updateProgressStats());
+    if (timeFilter) timeFilter.addEventListener('input', () => updateProgressStats()); 
 
     function updateProgressStats() {
         const filterValue = filterSelect.value;
@@ -477,85 +485,88 @@ document.addEventListener('DOMContentLoaded', async () => {
             return matchesActivity && matchesTime;
         });
 
-        statsWrapper.innerHTML = "";
-        
-        const months = {};
-        filtered.forEach(ex => {
-            const d = new Date(ex.date);
-            const key = d.toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' });
-            if (!months[key]) months[key] = [];
-            months[key].push(ex);
-        });
+        if (statsWrapper) {
+            statsWrapper.innerHTML = "";
+            const months = {};
+            filtered.forEach(ex => {
+                const d = new Date(ex.date);
+                const key = d.toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' });
+                if (!months[key]) months[key] = [];
+                months[key].push(ex);
+            });
 
-        const lifeMax = {};
-        dbExercises.forEach(ex => {
-            const isC = /běh|kolo|plavání|kardio|chůze/i.test(ex.name);
-            const val = Number(isC ? ex.reps : ex.weight) || 0;
-            if (val <= 0) return;
-            if (!lifeMax[ex.name]) lifeMax[ex.name] = val;
-            else lifeMax[ex.name] = isC ? Math.min(lifeMax[ex.name], val) : Math.max(lifeMax[ex.name], val);
-        });
+            const lifeMax = {};
+            dbExercises.forEach(ex => {
+                const isC = /běh|kolo|plavání|kardio|chůze/i.test(ex.name);
+                const val = Number(isC ? ex.reps : ex.weight) || 0;
+                if (val <= 0) return;
+                if (!lifeMax[ex.name]) lifeMax[ex.name] = val;
+                else lifeMax[ex.name] = isC ? Math.min(lifeMax[ex.name], val) : Math.max(lifeMax[ex.name], val);
+            });
 
-        Object.keys(months).sort((a, b) => new Date(months[b][0].date) - new Date(months[a][0].date)).forEach(monthKey => {
-            const monthData = months[monthKey];
-            monthData.sort((a, b) => new Date(b.date) - new Date(a.date)); 
+            Object.keys(months).sort((a, b) => new Date(months[b][0].date) - new Date(months[a][0].date)).forEach(monthKey => {
+                const monthData = months[monthKey];
+                monthData.sort((a, b) => new Date(b.date) - new Date(a.date)); 
 
-            const uniqueDays = [...new Set(monthData.map(ex => ex.date))].length;
-            const totalKcal = monthData.reduce((sum, ex) => sum + (Number(ex.kcal) || 0), 0);
-            
-            const card = document.createElement('div');
-            card.className = 'content-card';
-            card.innerHTML = `
-                <h3 class="month-header">${monthKey}</h3>
-                <div class="stats-grid">
-                    <div class="stat-card"><span class="stat-label">Dny</span><span class="stat-value">${uniqueDays}</span></div>
-                    <div class="stat-card"><span class="stat-label">Kalorie</span><span class="stat-value">${totalKcal}</span></div>
-                    <div class="stat-card"><span class="stat-label">Záznamů</span><span class="stat-value">${monthData.length}</span></div>
-                </div>
-                <div class="records-area" style="margin-top:20px;">
-                    ${monthData.map(ex => {
-                        const isC = /běh|kolo|plavání|kardio|chůze/i.test(ex.name);
-                        const val = Number(isC ? ex.reps : ex.weight);
-                        const isLB = val > 0 && val === lifeMax[ex.name];
-                        const dateDay = new Date(ex.date).getDate();
-                        const valDisplay = isC ? `${ex.reps} min (${ex.sets} km)` : `${ex.sets}×${ex.reps} | ${ex.weight} kg`;
-                        
-                        return `
-                            <div class="record-item" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding: 10px 0;">
-                                <div style="display:flex; flex-direction:column;">
-                                    <span style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;">${dateDay}. ${monthKey.split(' ')[0]}</span>
-                                    <span style="font-weight:600; color: ${isC ? '#38bdf8' : '#fb7185'};">${ex.name}</span>
-                                </div>
-                                <div class="record-tags">
-                                    ${isLB ? '<span class="badge life-best">LifeBest</span>' : ''}
-                                    <span class="record-val" style="font-size: 0.85rem;">${valDisplay}</span>
-                                </div>
-                            </div>`;
-                    }).join('')}
-                </div>`;
-            statsWrapper.appendChild(card);
-        });
+                const uniqueDays = [...new Set(monthData.map(ex => ex.date))].length;
+                const totalKcal = monthData.reduce((sum, ex) => sum + (Number(ex.kcal) || 0), 0);
+                
+                const card = document.createElement('div');
+                card.className = 'content-card';
+                card.innerHTML = `
+                    <h3 class="month-header">${monthKey}</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card"><span class="stat-label">Dny</span><span class="stat-value">${uniqueDays}</span></div>
+                        <div class="stat-card"><span class="stat-label">Kalorie</span><span class="stat-value">${totalKcal}</span></div>
+                        <div class="stat-card"><span class="stat-label">Záznamů</span><span class="stat-value">${monthData.length}</span></div>
+                    </div>
+                    <div class="records-area" style="margin-top:20px;">
+                        ${monthData.map(ex => {
+                            const isC = /běh|kolo|plavání|kardio|chůze/i.test(ex.name);
+                            const val = Number(isC ? ex.reps : ex.weight);
+                            const isLB = val > 0 && val === lifeMax[ex.name];
+                            const dateDay = new Date(ex.date).getDate();
+                            const valDisplay = isC ? `${ex.reps} min (${ex.sets} km)` : `${ex.sets}×${ex.reps} | ${ex.weight} kg`;
+                            
+                            return `
+                                <div class="record-item" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding: 10px 0;">
+                                    <div style="display:flex; flex-direction:column;">
+                                        <span style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;">${dateDay}. ${monthKey.split(' ')[0]}</span>
+                                        <span style="font-weight:600; color: ${isC ? '#38bdf8' : '#fb7185'};">${ex.name}</span>
+                                    </div>
+                                    <div class="record-tags">
+                                        ${isLB ? '<span class="badge life-best">LifeBest</span>' : ''}
+                                        <span class="record-val" style="font-size: 0.85rem;">${valDisplay}</span>
+                                    </div>
+                                </div>`;
+                        }).join('')}
+                    </div>`;
+                statsWrapper.appendChild(card);
+            });
+        }
 
         const dynamicVal = document.getElementById('dynamic-stat-value');
         const dynamicLabel = document.getElementById('dynamic-stat-label');
         const totalKcalVal = document.getElementById('total-kcal-value');
 
         const currentKcal = filtered.reduce((s, ex) => s + (Number(ex.kcal) || 0), 0);
-        totalKcalVal.innerText = currentKcal.toLocaleString();
+        if (totalKcalVal) totalKcalVal.innerText = currentKcal.toLocaleString();
 
-        if (filterValue === 'all' || filterValue === 'weight_progress') {
-            dynamicVal.innerText = filtered.length;
-            dynamicLabel.innerText = "Celkem aktivit";
-        } else {
-            const isC = /běh|kolo|plavání|kardio/i.test(filterValue);
-            if (isC) {
-                const totalKm = filtered.reduce((s, ex) => s + (Number(ex.sets) || 0), 0);
-                dynamicVal.innerText = totalKm.toFixed(1);
-                dynamicLabel.innerText = "Celkem km";
+        if (dynamicVal && dynamicLabel) {
+            if (filterValue === 'all' || filterValue === 'weight_progress') {
+                dynamicVal.innerText = filtered.length;
+                dynamicLabel.innerText = "Celkem aktivit";
             } else {
-                const maxW = filtered.length > 0 ? Math.max(...filtered.map(ex => Number(ex.weight) || 0)) : 0;
-                dynamicVal.innerText = maxW;
-                dynamicLabel.innerText = "Max váha (kg)";
+                const isC = /běh|kolo|plavání|kardio/i.test(filterValue);
+                if (isC) {
+                    const totalKm = filtered.reduce((s, ex) => s + (Number(ex.sets) || 0), 0);
+                    dynamicVal.innerText = totalKm.toFixed(1);
+                    dynamicLabel.innerText = "Celkem km";
+                } else {
+                    const maxW = filtered.length > 0 ? Math.max(...filtered.map(ex => Number(ex.weight) || 0)) : 0;
+                    dynamicVal.innerText = maxW;
+                    dynamicLabel.innerText = "Max váha (kg)";
+                }
             }
         }
         updateChart(filterValue, timeValue);
@@ -565,7 +576,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const ctx = document.getElementById('progressChart');
         const container = document.getElementById('chart-container');
         if (!ctx) return;
-        if (name === 'all') { container.style.display = 'none'; return; }
+        if (name === 'all' || !container) { if(container) container.style.display = 'none'; return; }
 
         let labels = [], values = [], extraData = [], labelTxt = "";
         const isC = /běh|kolo|plavání|kardio/i.test(name);
@@ -609,72 +620,57 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // --- AI TRENÉR LOGIKA ---
-    async function getAiRecommendation() {
-        const loader = document.getElementById('ai-loader');
-        const outputArea = document.getElementById('ai-response-area');
-        const outputText = document.getElementById('ai-text-output');
-        const btn = document.getElementById('btn-generate-plan');
+    // --- 8. AI TRENÉR (OPRAVENO) ---
+    if (btnGeneratePlan) {
+        btnGeneratePlan.addEventListener('click', async () => {
+            aiLoader.style.display = 'block';
+            aiResponseArea.style.display = 'none';
+            btnGeneratePlan.disabled = true;
 
-        if (!GEMINI_API_KEY || GEMINI_API_KEY === 'SEM_VLOŽ_SVŮJ_KLÍČ_Z_GOOGLE_AI_STUDIO') {
-            alert("Prosím vlož svůj API klíč do kódu (GEMINI_API_KEY).");
-            return;
-        }
+            try {
+                // Získání historie pro prompt
+                const { data: recentEx } = await _supabase
+                    .from('exercises')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .order('date', { ascending: false })
+                    .limit(10);
 
-        loader.style.display = 'block';
-        outputArea.style.display = 'none';
-        btn.disabled = true;
+                const workoutHistory = recentEx && recentEx.length > 0 
+                    ? recentEx.map(ex => `- ${ex.date}: ${ex.name} (${ex.sets}x${ex.reps}, ${ex.weight}kg)`).join('\n')
+                    : "Uživatel zatím nemá žádné záznamy tréninků.";
 
-        try {
-            const { data: recentEx } = await _supabase
-                .from('exercises')
-                .select('*')
-                .eq('user_id', currentUser.id)
-                .order('date', { ascending: false })
-                .limit(10);
+                const prompt = `Jsi profesionální fitness trenér. Na základě této historie:
+                ${workoutHistory}
+                Napiš česky stručné doporučení na dnešek (max 3 věty).`;
 
-            const workoutHistory = recentEx && recentEx.length > 0 
-                ? recentEx.map(ex => `- ${ex.date}: ${ex.name} (${ex.sets}x${ex.reps}, ${ex.weight}kg, pocity: ${ex.rating || 'neuvedeno'})`).join('\n')
-                : "Uživatel zatím nemá žádné záznamy tréninků.";
+                // Volání Gemini API
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }]
+                    })
+                });
 
-            const prompt = `Jsi profesionální fitness trenér a stratég. Tvůj svěřenec chce radu na dnešek.
-            His historie tréninků:
-            ${workoutHistory}
-            
-            Na základě těchto dat mu napiš doporučení na dnešek. 
-            - Pokud včera dřel (např. těžké dřepy) a cítil se zničeně, navrhni spíše odpočinek.
-            - Pokud má pauzu, motivuj ho.
-            - Piš česky, stručně (max 3-4 věty) a buď konkrétní a lidský.`;
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error.message);
+                }
 
-           const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyAzMlgocC7RvMu_Qnht_xWDXZSdvBNa1H4", {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json' 
-                },
-                body: JSON.stringify({
-                    contents: [{ 
-                        parts: [{ 
-                            text: prompt 
-                        }] 
-                    }]
-                })
-            });
+                const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Trenér nemá dnes nápady.";
+                aiTextOutput.innerText = aiText;
+                aiResponseArea.style.display = 'block';
 
-            const data = await response.json();
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "Trenér teď nemá signál, zkus to později.";
-            
-            outputText.innerText = text;
-            outputArea.style.display = 'block';
-
-        } catch (err) {
-            console.error(err);
-            alert("Chyba při komunikaci s AI trenérem.");
-        } finally {
-            loader.style.display = 'none';
-            btn.disabled = false;
-        }
+            } catch (err) {
+                console.error("AI Error:", err);
+                aiTextOutput.innerText = "Chyba: " + err.message;
+                aiResponseArea.style.display = 'block';
+            } finally {
+                aiLoader.style.display = 'none';
+                btnGeneratePlan.disabled = false;
+            }
+        });
     }
-
-    document.getElementById('btn-generate-plan')?.addEventListener('click', getAiRecommendation);
-
 });
