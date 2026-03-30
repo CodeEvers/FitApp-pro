@@ -2,10 +2,6 @@
 const SUPABASE_URL = 'https://cafvdjmjwevbmunydhtq.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhZnZkam1qd2V2Ym11bnlkaHRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1MjU0MDMsImV4cCI6MjA5MDEwMTQwM30.BVQNZhecgDD_s3S2jQ9kJ16_M0R54obbmYIcftx0c08';
 
-// --- KONFIGURACE GEMINI AI ---
-// Používáme .replace(/\s/g, ''), aby v klíči nezůstala ani jedna neviditelná mezera
-const GEMINI_API_KEY = 'AIzaSyAOi8oQc2-vk7XRUYxMlh-MDaY4WQ9-4aI'.replace(/\s/g, '');
-
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
         persistSession: true,
@@ -36,7 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const timeFilter = document.getElementById('filter-time'); 
     const hiddenDateInput = document.getElementById('hidden-date-input');
 
-    // --- DYNAMICKÉ PŘEPÍNÁNÍ POLÍČEK (Běh -> Tepovka) ---
+    // --- DYNAMICKÉ PŘEPÍNÁNÍ POLÍČEK ---
     if (nameInput) {
         nameInput.addEventListener('input', () => {
             const val = nameInput.value.toLowerCase();
@@ -139,11 +135,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function fetchData() {
         if (!currentUser) return;
 
-        const allowedAiUsers = [
-            'majitel@test.cz', 
-            'cerny.mi@centrum.cz'
-        ];
-
+        const allowedAiUsers = ['majitel@test.cz', 'cerny.mi@centrum.cz'];
         const aiCard = document.querySelector('.card[data-target="screen-ai"]');
 
         if (aiCard) {
@@ -370,7 +362,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.deleteFood = async (id) => { if(confirm('Smazat jídlo?')) { await _supabase.from('food').delete().eq('id', id); await fetchData(); } };
 
-    // --- 6. TRÉNINK (LOGIKA) ---
+    // --- 6. TRÉNINK ---
     document.getElementById('btn-add-exercise').addEventListener('click', async () => {
         const name = nameInput.value.trim();
         const editId = editIdInput.value;
@@ -620,7 +612,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // --- 8. AI TRENÉR (OPRAVENO) ---
+    // --- 8. AI TRENÉR (ZABEZPEČENO PŘES SUPABASE EDGE FUNCTIONS) ---
     if (btnGeneratePlan) {
         btnGeneratePlan.addEventListener('click', async () => {
             aiLoader.style.display = 'block';
@@ -628,7 +620,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             btnGeneratePlan.disabled = true;
 
             try {
-                // Získání historie pro prompt
+                // 1. Příprava tréninkové historie pro AI
                 const { data: recentEx } = await _supabase
                     .from('exercises')
                     .select('*')
@@ -644,34 +636,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ${workoutHistory}
                 Napiš česky stručné doporučení na dnešek (max 3 věty).`;
 
-                // Volání Gemini API
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_API_KEY.trim()}`;
-
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [{ text: prompt }]
-                        }]
-                    })
+                // 2. Volání vaší nové Edge Funkce v Supabase (ŽÁDNÝ API KLÍČ V KÓDU)
+                const { data, error } = await _supabase.functions.invoke('gemini-coach', {
+                    body: { prompt: prompt }
                 });
 
-                const data = await response.json();
-                
-                if (data.error) {
-                    throw new Error(data.error.message);
-                }
+                if (error) throw new Error(error.message);
 
-                const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Trenér nemá dnes nápady.";
-                aiTextOutput.innerText = aiText;
+                // 3. Zpracování odpovědi od Gemini (přes funkci)
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                aiTextOutput.innerText = text || "Trenér se na dnešek zamyslel a nemá slova.";
                 aiResponseArea.style.display = 'block';
 
             } catch (err) {
                 console.error("AI Error:", err);
-                aiTextOutput.innerText = "Chyba: " + err.message;
+                aiTextOutput.innerText = "Trenér si dává pauzu: " + err.message;
                 aiResponseArea.style.display = 'block';
             } finally {
                 aiLoader.style.display = 'none';
