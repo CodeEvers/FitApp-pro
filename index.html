@@ -44,6 +44,39 @@
             border-color: #0081ff; /* Modrá barva z tvého loga */
             color: #fff;
         }
+
+        /* NOVÉ STYLY PRO AI TRENÉRA */
+        .ai-hero-card {
+            text-align: center;
+            padding: 30px 20px;
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(0, 0, 0, 0) 100%);
+            border-radius: 20px;
+            border: 1px solid rgba(168, 85, 247, 0.2);
+            margin-bottom: 25px;
+        }
+        .ai-icon { font-size: 3rem; margin-bottom: 15px; }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 4px solid rgba(168, 85, 247, 0.2);
+            border-top: 4px solid #a855f7;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .ai-response {
+            border-left: 4px solid #a855f7;
+            background: rgba(255,255,255,0.03);
+            line-height: 1.6;
+        }
+        .response-header {
+            color: #a855f7;
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
     </style>
 </head>
 <body>
@@ -247,7 +280,27 @@
         <div class="container">
             <button class="back-btn" data-target="screen-dashboard"><i class="fas fa-chevron-left"></i> Zpět</button>
             <h1>🤖 AI Trenér</h1>
-            <p>Sekce se připravuje...</p>
+            
+            <div class="ai-hero-card">
+                <div class="ai-icon">🦾</div>
+                <h3>Tvůj osobní fitness stratég</h3>
+                <p style="color: var(--text-dim); margin-bottom: 20px;">Analyzuji tvé poslední výkony a pocity, abych ti poradil, co dnes podniknout.</p>
+                <button id="btn-generate-plan" class="main-btn" style="background: #a855f7;">
+                    <i class="fas fa-wand-magic-sparkles"></i> Sestavit doporučení na dnes
+                </button>
+            </div>
+
+            <div id="ai-loader" style="display: none;">
+                <div class="spinner"></div>
+                <p style="text-align: center; color: var(--text-dim);">Analyzuji tvůj deník...</p>
+            </div>
+
+            <div id="ai-response-area" class="content-card ai-response" style="display: none;">
+                <div class="response-header">
+                    <i class="fas fa-comment-dots"></i> Rada od trenéra:
+                </div>
+                <p id="ai-text-output" style="color: #eee;"></p>
+            </div>
         </div>
     </section>
 
