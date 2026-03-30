@@ -645,7 +645,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 Napiš česky stručné doporučení na dnešek (max 3 věty).`;
 
                 // Volání Gemini API
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY.trim()}`;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash:generateContent?key=${GEMINI_API_KEY.trim()}`;
 
                 const response = await fetch(url, {
                     method: 'POST',
