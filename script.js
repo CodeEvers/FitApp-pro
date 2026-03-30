@@ -2,6 +2,9 @@
 const SUPABASE_URL = 'https://cafvdjmjwevbmunydhtq.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhZnZkam1qd2V2Ym11bnlkaHRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1MjU0MDMsImV4cCI6MjA5MDEwMTQwM30.BVQNZhecgDD_s3S2jQ9kJ16_M0R54obbmYIcftx0c08';
 
+// --- KONFIGURACE GEMINI AI ---
+const GEMINI_API_KEY = 'SEM_VLOŽ_SVŮJ_KLÍČ_Z_GOOGLE_AI_STUDIO';
+
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
         persistSession: true,
@@ -584,6 +587,76 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
     }
+
+    // --- AI TRENÉR LOGIKA ---
+    async function getAiRecommendation() {
+        const loader = document.getElementById('ai-loader');
+        const outputArea = document.getElementById('ai-response-area');
+        const outputText = document.getElementById('ai-text-output');
+        const btn = document.getElementById('btn-generate-plan');
+
+        if (!GEMINI_API_KEY || GEMINI_API_KEY === 'SEM_VLOŽ_SVŮJ_KLÍČ_Z_GOOGLE_AI_STUDIO') {
+            alert("Prosím vlož svůj API klíč do kódu (GEMINI_API_KEY).");
+            return;
+        }
+
+        loader.style.display = 'block';
+        outputArea.style.display = 'none';
+        btn.disabled = true;
+
+        try {
+            // 1. STÁHNEME DATA ZE SUPABASE
+            const { data: recentEx } = await _supabase
+                .from('exercises')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .order('date', { ascending: false })
+                .limit(10);
+
+            // 2. VYTVOŘÍME KONTEXT
+            const workoutHistory = recentEx && recentEx.length > 0 
+                ? recentEx.map(ex => `- ${ex.date}: ${ex.name} (${ex.sets}x${ex.reps}, ${ex.weight}kg, pocity: ${ex.rating || 'neuvedeno'})`).join('\n')
+                : "Uživatel zatím nemá žádné záznamy tréninků.";
+
+            const prompt = `Jsi profesionální fitness trenér a stratég. Tvůj svěřenec chce radu na dnešek.
+            Jeho historie tréninků:
+            ${workoutHistory}
+            
+            Na základě těchto dat mu napiš doporučení na dnešek. 
+            - Pokud včera dřel (např. těžké dřepy) a cítil se zničeně, navrhni spíše odpočinek.
+            - Pokud má pauzu, motivuj ho.
+            - Piš česky, stručně (max 3-4 věty) a buď konkrétní a lidský.`;
+
+            // 3. ZAVOLÁME GEMINI API
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }]
+                })
+            });
+
+            const result = await response.json();
+            
+            if (result.candidates && result.candidates[0].content.parts[0].text) {
+                outputText.innerText = result.candidates[0].content.parts[0].text;
+                outputArea.style.display = 'block';
+            } else {
+                throw new Error("AI nevrátilo platnou odpověď.");
+            }
+
+        } catch (error) {
+            console.error("AI Error:", error);
+            outputText.innerText = "Chyba při spojení s AI trenérem. Zkontroluj API klíč.";
+            outputArea.style.display = 'block';
+        } finally {
+            loader.style.display = 'none';
+            btn.disabled = false;
+        }
+    }
+
+    // Listener pro AI tlačítko
+    document.getElementById('btn-generate-plan')?.addEventListener('click', getAiRecommendation);
 
     // --- INICIALIZACE ---
     updateDateDisplay();
