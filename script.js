@@ -1,6 +1,5 @@
 // --- KONFIGURACE SUPABASE ---
 const SUPABASE_URL = 'https://cafvdjmjwevbmunydhtq.supabase.co';
-// POZOR: Tento klíč je veřejný (anon), to je v pořádku. API klíč ke Gemini zde NESMÍ BÝT.
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNhZnZkam1qd2V2Ym11bnlkaHRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1MjU0MDMsImV4cCI6MjA5MDEwMTQwM30.BVQNZhecgDD_s3S2jQ9kJ16_M0R54obbmYIcftx0c08';
 
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -614,7 +613,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // --- 8. AI TRENÉR ---
+    // --- 8. AI TRENÉR (ANALÝZA POSLEDNÍCH 3 DNŮ) ---
     if (btnGeneratePlan) {
         btnGeneratePlan.addEventListener('click', async () => {
             const userQuery = trainerInput.value.trim();
@@ -625,19 +624,37 @@ document.addEventListener('DOMContentLoaded', async () => {
             btnGeneratePlan.disabled = true;
 
             try {
-                // 1. Příprava historie tréninků (pro kontext)
-                const { data: recentEx } = await _supabase
+                // 1. Výpočet data před 3 dny
+                const threeDaysAgo = new Date();
+                threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+                const dateLimit = threeDaysAgo.toISOString().split('T')[0];
+
+                // 2. Načtení historie tréninků ze Supabase
+                const { data: recentEx, error: dbError } = await _supabase
                     .from('exercises')
                     .select('*')
                     .eq('user_id', currentUser.id)
-                    .order('date', { ascending: false })
-                    .limit(5);
+                    .gte('date', dateLimit)
+                    .order('date', { ascending: false });
 
-                const historyStr = recentEx && recentEx.length > 0 
-                    ? recentEx.map(ex => `${ex.name} (${ex.sets}x${ex.reps})`).join(', ')
-                    : "žádná historie";
+                if (dbError) throw dbError;
 
-                // 2. Volání Edge Funkce get-ai-advice
+                // 3. Seskupení historie pro AI (aby věděla, co bylo který den)
+                const historyMap = {};
+                if (recentEx) {
+                    recentEx.forEach(ex => {
+                        if (!historyMap[ex.date]) historyMap[ex.date] = [];
+                        historyMap[ex.date].push(`${ex.name} (${ex.sets}x${ex.reps}, ${ex.weight}kg)`);
+                    });
+                }
+
+                const historyStr = Object.keys(historyMap).length > 0 
+                    ? Object.entries(historyMap)
+                        .map(([date, exs]) => `${date}: ${exs.join(', ')}`)
+                        .join(' | ')
+                    : "v posledních 3 dnech žádná historie";
+
+                // 4. Volání Edge Funkce
                 const { data, error } = await _supabase.functions.invoke('get-ai-advice', {
                     body: { 
                         message: userQuery,
@@ -647,13 +664,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 if (error) throw error;
 
-                // 3. Zobrazení výsledku
+                // 5. Zobrazení výsledku
                 aiTextOutput.innerText = data.advice;
                 aiResponseArea.style.display = 'block';
 
             } catch (err) {
                 console.error("Chyba AI:", err);
-                aiTextOutput.innerText = "Promiň, trenér má teď pauzu. Zkus to za chvilku. (Chyba: " + err.message + ")";
+                aiTextOutput.innerText = "Chyba při komunikaci s trenérem: " + err.message;
                 aiResponseArea.style.display = 'block';
             } finally {
                 aiLoader.style.display = 'none';
