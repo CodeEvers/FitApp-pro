@@ -82,6 +82,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- AI TRENÉR ELEMENTY ---
     const btnGeneratePlan = document.getElementById('btn-generate-plan');
+    const trainerInput = document.getElementById('trainerInput');
     const aiLoader = document.getElementById('ai-loader');
     const aiResponseArea = document.getElementById('ai-response-area');
     const aiTextOutput = document.getElementById('ai-text-output');
@@ -613,53 +614,47 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // --- 8. AI TRENÉR (OPRAVENO PRO GEMINI 2.0 A SUPABASE EDGE FUNCTIONS) ---
+    // --- 8. AI TRENÉR ---
     if (btnGeneratePlan) {
         btnGeneratePlan.addEventListener('click', async () => {
+            const userQuery = trainerInput.value.trim();
+            if (!userQuery) return alert("Napiš trenérovi, s čím potřebuješ poradit.");
+
             aiLoader.style.display = 'block';
             aiResponseArea.style.display = 'none';
             btnGeneratePlan.disabled = true;
 
             try {
-                // 1. Příprava tréninkové historie pro AI
+                // 1. Příprava historie tréninků (pro kontext)
                 const { data: recentEx } = await _supabase
                     .from('exercises')
                     .select('*')
                     .eq('user_id', currentUser.id)
                     .order('date', { ascending: false })
-                    .limit(10);
+                    .limit(5);
 
-                const workoutHistory = recentEx && recentEx.length > 0 
-                    ? recentEx.map(ex => `- ${ex.date}: ${ex.name} (${ex.sets}x${ex.reps}, ${ex.weight}kg)`).join('\n')
-                    : "Uživatel zatím nemá žádné záznamy tréninků.";
+                const historyStr = recentEx && recentEx.length > 0 
+                    ? recentEx.map(ex => `${ex.name} (${ex.sets}x${ex.reps})`).join(', ')
+                    : "žádná historie";
 
-                const prompt = `Jsi profesionální fitness trenér. Na základě této historie tréninků:
-                ${workoutHistory}
-                Napiš v češtině velmi stručné a motivující doporučení na dnešek (max 3 věty).`;
-
-                // 2. Volání tvé Edge Funkce v Supabase (jméno funkce musí odpovídat tomu, jak jsi ji pojmenoval v Supabase)
-                // Předpokládáme, že funkce se jmenuje 'gemini-coach'
-                const { data, error } = await _supabase.functions.invoke('gemini-coach', {
-                    body: { prompt: prompt }
+                // 2. Volání Edge Funkce get-ai-advice
+                const { data, error } = await _supabase.functions.invoke('get-ai-advice', {
+                    body: { 
+                        message: userQuery,
+                        history: historyStr
+                    }
                 });
 
-                if (error) throw new Error(error.message);
+                if (error) throw error;
 
-                // 3. Zpracování odpovědi od Gemini (podle tvé struktury ve funkci)
-                // Gemini 2.0 vrací text v candidates[0].content.parts[0].text
-                const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || data?.text;
-                
-                if (text) {
-                    aiTextOutput.innerText = text;
-                } else {
-                    aiTextOutput.innerText = "Trenér dnes nemá slov, zkus to prosím za chvíli.";
-                }
-
+                // 3. Zobrazení výsledku
+                aiTextOutput.innerText = data.advice;
                 aiResponseArea.style.display = 'block';
 
             } catch (err) {
-                console.error("AI Error:", err);
-                alert("Nepodařilo se spojit s trenérem: " + err.message);
+                console.error("Chyba AI:", err);
+                aiTextOutput.innerText = "Promiň, trenér má teď pauzu. Zkus to za chvilku. (Chyba: " + err.message + ")";
+                aiResponseArea.style.display = 'block';
             } finally {
                 aiLoader.style.display = 'none';
                 btnGeneratePlan.disabled = false;
