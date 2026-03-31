@@ -639,53 +639,39 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 if (dbError) throw dbError;
 
-                // 3. Seskupení historie pro AI
-                let historyStr = "";
-                if (recentEx && recentEx.length > 0) {
-                    const historyMap = {};
+                // 3. Seskupení historie pro AI (aby věděla, co bylo který den)
+                const historyMap = {};
+                if (recentEx) {
                     recentEx.forEach(ex => {
                         if (!historyMap[ex.date]) historyMap[ex.date] = [];
                         historyMap[ex.date].push(`${ex.name} (${ex.sets}x${ex.reps}, ${ex.weight}kg)`);
                     });
-                    historyStr = Object.entries(historyMap)
-                        .map(([date, exs]) => `${date}: ${exs.join(', ')}`)
-                        .join('\n');
-                } else {
-                    historyStr = "Žádná historie za poslední 3 dny.";
                 }
 
-                // 4. Volání AI (Změň URL na svou proxy nebo přímo OpenAI)
-                const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer TVUJ_OPENAI_KLIC` 
-                    },
-                    body: JSON.stringify({
-                        model: "gpt-3.5-turbo",
-                        messages: [
-                            { role: "system", content: "Jsi profesionální fitness trenér. Používej odrážky, tučné písmo a číslování pro přehlednost." },
-                            { role: "user", content: `Uživatel se ptá: ${userQuery}\n\nHistorie tréninků za 3 dny:\n${historyStr}` }
-                        ]
-                    })
+                const historyStr = Object.keys(historyMap).length > 0 
+                    ? Object.entries(historyMap)
+                        .map(([date, exs]) => `${date}: ${exs.join(', ')}`)
+                        .join(' | ')
+                    : "v posledních 3 dnech žádná historie";
+
+                // 4. Volání Edge Funkce
+                const { data, error } = await _supabase.functions.invoke('get-ai-advice', {
+                    body: { 
+                        message: userQuery,
+                        history: historyStr
+                    }
                 });
 
-                const aiData = await response.json();
-                const rawReply = aiData.choices[0].message.content;
+                if (error) throw error;
 
-                // 5. Formátování textu (Převod markdown symbolů na HTML)
-                const formattedReply = rawReply
-                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Tučné
-                    .replace(/^\s*[\-\*]\s+(.*)$/gm, '<li>$1</li>')     // Odrážky
-                    .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')          // Obalení seznamu
-                    .replace(/\n/g, '<br>');                             // Nové řádky
-
-                aiTextOutput.innerHTML = formattedReply; // Použijeme innerHTML pro zobrazení tagů
+                // 5. Zobrazení výsledku
+                aiTextOutput.innerText = data.advice;
                 aiResponseArea.style.display = 'block';
 
             } catch (err) {
-                console.error(err);
-                alert("Chyba při komunikaci s AI: " + err.message);
+                console.error("Chyba AI:", err);
+                aiTextOutput.innerText = "Chyba při komunikaci s trenérem: " + err.message;
+                aiResponseArea.style.display = 'block';
             } finally {
                 aiLoader.style.display = 'none';
                 btnGeneratePlan.disabled = false;
