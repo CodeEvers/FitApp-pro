@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function fetchData() {
         if (!currentUser) return;
 
-        const allowedAiUsers = ['majitel@test.cz', 'cerny.mi@centrum.cz'];
+        const allowedAiUsers = ['majitel@test.cz', 'cerny.mi@centrum.cz', 'terezazlatnikova@seznam.cz'];
         const aiCard = document.querySelector('.card[data-target="screen-ai"]');
 
         if (aiCard) {
