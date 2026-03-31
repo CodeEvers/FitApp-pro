@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (nameInput) {
         nameInput.addEventListener('input', () => {
             const val = nameInput.value.toLowerCase();
-            const isKardio = /běh|kolo|eliptický trenažér|běžecký pás|plavání|kardio|brusle|chůze|row/i.test(val);
+            const isKardio = /běh|kolo|eliptický|trenažér|běžecký|pás|plavání|kardio|brusle|chůze|row/i.test(val);
 
             if (isKardio) {
                 setsInput.placeholder = "Kilometry (km)";
@@ -402,7 +402,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (phaseExs.length > 0) {
                 let html = `<div class="phase-group"><div class="phase-title">${phase}</div><div class="phase-content">`;
                 phaseExs.forEach(ex => {
-                    const isC = /běh|kolo|eliptický trenažér|běžecký pás|plavání|kardio|brusle|chůze/i.test(ex.name);
+                    const isC = /běh|kolo|eliptický|trenažér|běžecký|pás|plavání|kardio|brusle|chůze/i.test(ex.name);
                     const mainColor = isC ? "#38bdf8" : "#fb7185";
                     const bgColor = isC ? "rgba(56, 189, 248, 0.15)" : "rgba(251, 113, 133, 0.15)";
                     let detail = isC ? `🏁 ${ex.sets} km | ⏱️ ${ex.reps} min | ❤️ ${ex.weight} bpm` : `${ex.sets}×${ex.reps} | <strong>${ex.weight} kg</strong>`;
@@ -515,7 +515,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                     <div class="records-area" style="margin-top:20px;">
                         ${monthData.map(ex => {
-                            const isC = /běh|kolo|eliptický trenažéř|běžecký pás|plavání|kardio|chůze/i.test(ex.name);
+                            const isC = /běh|kolo|eliptický|trenažéř|běžecký|pás|plavání|kardio|chůze/i.test(ex.name);
                             const val = Number(isC ? ex.reps : ex.weight);
                             const isLB = val > 0 && val === lifeMax[ex.name];
                             const dateDay = new Date(ex.date).getDate();
