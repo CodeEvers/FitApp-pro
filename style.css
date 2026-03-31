@@ -599,19 +599,3 @@ button { border: none; cursor: pointer; transition: 0.2s; font-family: inherit; 
   border-color: #00d1b2; /* Barva tvé aplikace (zelená/modrá) */
   color: #fff;
 }
-
-/* --- FORMÁTOVÁNÍ AI ODPOVĚDÍ (PŘIDÁNO) --- */
-#ai-text-output strong {
-    color: var(--accent);
-    font-weight: 700;
-}
-
-#ai-text-output ul, #ai-text-output ol {
-    margin: 15px 0;
-    padding-left: 25px;
-}
-
-#ai-text-output li {
-    margin-bottom: 8px;
-    list-style-type: disc;
-}
