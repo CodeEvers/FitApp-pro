@@ -515,7 +515,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                     <div class="records-area" style="margin-top:20px;">
                         ${monthData.map(ex => {
-                            const isC = /běh|kolo|plavání|kardio|chůze/i.test(ex.name);
+                            const isC = /běh|kolo|eliptický trenažéř|běžecký pás|plavání|kardio|chůze/i.test(ex.name);
                             const val = Number(isC ? ex.reps : ex.weight);
                             const isLB = val > 0 && val === lifeMax[ex.name];
                             const dateDay = new Date(ex.date).getDate();
