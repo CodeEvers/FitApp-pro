@@ -599,3 +599,25 @@ button { border: none; cursor: pointer; transition: 0.2s; font-family: inherit; 
   border-color: #00d1b2; /* Barva tvé aplikace (zelená/modrá) */
   color: #fff;
 }
+
+/* ocud
+/* Stylování nadpisů z AI (to jsou ty #####) */
+#odpoved h5 {
+    color: #fb7185;
+    font-size: 1.2rem;
+    border-bottom: 1px solid #333;
+}
+
+/* Stylování tučného textu (to jsou ty **text**) */
+#odpoved strong {
+    color: #38bdf8; /* Tvoje modrá */
+    background: rgba(56, 189, 248, 0.1);
+    padding: 0 4px;
+    border-radius: 4px;
+}
+
+/* Stylování seznamů (ty hvězdičky na začátku řádku) */
+#odpoved ul {
+    list-style-type: square;
+    margin-left: 20px;
+}
