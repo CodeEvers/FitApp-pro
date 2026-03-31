@@ -639,7 +639,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 if (dbError) throw dbError;
 
-                // 3. Seskupení historie pro AI (aby věděla, co bylo který den)
+                // 3. Seskupení historie pro AI
                 const historyMap = {};
                 if (recentEx) {
                     recentEx.forEach(ex => {
@@ -648,34 +648,47 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
                 }
 
-                const historyStr = Object.keys(historyMap).length > 0 
-                    ? Object.entries(historyMap)
-                        .map(([date, exs]) => `${date}: ${exs.join(', ')}`)
-                        .join(' | ')
-                    : "v posledních 3 dnech žádná historie";
+                const historyStr = Object.entries(historyMap)
+                    .map(([date, exs]) => `${date}: ${exs.join(', ')}`)
+                    .join(' | ');
 
                 // 4. Volání Edge Funkce
                 const { data, error } = await _supabase.functions.invoke('get-ai-advice', {
-                    body: { 
-                        message: userQuery,
-                        history: historyStr
-                    }
+                    body: { message: userQuery, history: historyStr }
                 });
 
                 if (error) throw error;
 
-                // 5. Zobrazení výsledku
-                aiTextOutput.innerText = data.advice;
+                // 5. Bezpečné zpracování odpovědi (Ošetření prázdných dat)
+                let finalReply = "";
+                if (data && data.choices && data.choices[0] && data.choices[0].message) {
+                    finalReply = data.choices[0].message.content;
+                } else if (data && data.reply) {
+                    finalReply = data.reply;
+                } else {
+                    throw new Error("AI odpověděla v neznámém formátu.");
+                }
+
+                // Zobrazení s formátováním
+                aiTextOutput.innerHTML = formatAiResponse(finalReply);
                 aiResponseArea.style.display = 'block';
 
             } catch (err) {
-                console.error("Chyba AI:", err);
-                aiTextOutput.innerText = "Chyba při komunikaci s trenérem: " + err.message;
-                aiResponseArea.style.display = 'block';
+                console.error("Detail chyby:", err);
+                alert("Trenér má momentálně technický problém: " + (err.message || "Nepodařilo se získat odpověď."));
             } finally {
                 aiLoader.style.display = 'none';
                 btnGeneratePlan.disabled = false;
             }
         });
+    }
+
+    // Pomocná funkce pro formátování AI textu
+    function formatAiResponse(text) {
+        if (!text) return "";
+        return text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Tučné
+            .replace(/^\* (.*$)/gim, '<li>$1</li>')         // Odrážky
+            .replace(/\n/g, '<br>');                         // Nové řádky
     }
 });
