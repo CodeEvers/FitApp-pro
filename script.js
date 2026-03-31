@@ -613,7 +613,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // --- 8. AI TRENÉR (ANALÝZA POSLEDNÍCH 3 DNŮ) ---
+    // --- 8. AI TRENÉR (OPRAVENÁ VERZE) ---
     if (btnGeneratePlan) {
         btnGeneratePlan.addEventListener('click', async () => {
             const userQuery = trainerInput.value.trim();
@@ -624,12 +624,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             btnGeneratePlan.disabled = true;
 
             try {
-                // 1. Výpočet data před 3 dny
                 const threeDaysAgo = new Date();
                 threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
                 const dateLimit = threeDaysAgo.toISOString().split('T')[0];
 
-                // 2. Načtení historie tréninků ze Supabase
                 const { data: recentEx, error: dbError } = await _supabase
                     .from('exercises')
                     .select('*')
@@ -639,43 +637,40 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 if (dbError) throw dbError;
 
-                // 3. Seskupení historie pro AI
                 const historyMap = {};
-                if (recentEx) {
-                    recentEx.forEach(ex => {
-                        if (!historyMap[ex.date]) historyMap[ex.date] = [];
-                        historyMap[ex.date].push(`${ex.name} (${ex.sets}x${ex.reps}, ${ex.weight}kg)`);
-                    });
-                }
+                recentEx?.forEach(ex => {
+                    if (!historyMap[ex.date]) historyMap[ex.date] = [];
+                    historyMap[ex.date].push(`${ex.name} (${ex.sets}x${ex.reps}, ${ex.weight}kg)`);
+                });
 
                 const historyStr = Object.entries(historyMap)
                     .map(([date, exs]) => `${date}: ${exs.join(', ')}`)
-                    .join(' | ');
+                    .join(' | ') || "Žádná historie za poslední 3 dny.";
 
-                // 4. Volání Edge Funkce
+                // Volání funkce
                 const { data, error } = await _supabase.functions.invoke('get-ai-advice', {
                     body: { message: userQuery, history: historyStr }
                 });
 
-                if (error) throw error;
+                if (error) throw new Error("Chyba spojení: " + error.message);
 
-                // 5. Bezpečné zpracování odpovědi (Ošetření prázdných dat)
+                // --- ROBUSTNÍ ČTENÍ DAT (ŘEŠÍ CHYBU 0) ---
                 let finalReply = "";
-                if (data && data.choices && data.choices[0] && data.choices[0].message) {
+                if (data && data.choices && data.choices[0]?.message?.content) {
                     finalReply = data.choices[0].message.content;
                 } else if (data && data.reply) {
                     finalReply = data.reply;
                 } else {
+                    console.log("Odpověď z Edge funkce:", data);
                     throw new Error("AI odpověděla v neznámém formátu.");
                 }
 
-                // Zobrazení s formátováním
                 aiTextOutput.innerHTML = formatAiResponse(finalReply);
                 aiResponseArea.style.display = 'block';
 
             } catch (err) {
-                console.error("Detail chyby:", err);
-                alert("Trenér má momentálně technický problém: " + (err.message || "Nepodařilo se získat odpověď."));
+                console.error("AI Error:", err);
+                alert("Trenér má technický problém: " + err.message);
             } finally {
                 aiLoader.style.display = 'none';
                 btnGeneratePlan.disabled = false;
@@ -683,12 +678,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Pomocná funkce pro formátování AI textu
     function formatAiResponse(text) {
         if (!text) return "";
         return text
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Tučné
-            .replace(/^\* (.*$)/gim, '<li>$1</li>')         // Odrážky
-            .replace(/\n/g, '<br>');                         // Nové řádky
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/^\* (.*$)/gim, '<li>$1</li>')
+            .replace(/\n/g, '<br>');
     }
 });
