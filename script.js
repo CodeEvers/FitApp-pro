@@ -613,7 +613,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // --- 8. AI TRENÉR (OPRAVENÁ VERZE) ---
+    // --- 8. AI TRENÉR (ANALÝZA POSLEDNÍCH 3 DNŮ) ---
     if (btnGeneratePlan) {
         btnGeneratePlan.addEventListener('click', async () => {
             const userQuery = trainerInput.value.trim();
@@ -624,10 +624,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             btnGeneratePlan.disabled = true;
 
             try {
+                // 1. Výpočet data před 3 dny
                 const threeDaysAgo = new Date();
                 threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
                 const dateLimit = threeDaysAgo.toISOString().split('T')[0];
 
+                // 2. Načtení historie tréninků ze Supabase
                 const { data: recentEx, error: dbError } = await _supabase
                     .from('exercises')
                     .select('*')
@@ -637,52 +639,43 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 if (dbError) throw dbError;
 
+                // 3. Seskupení historie pro AI (aby věděla, co bylo který den)
                 const historyMap = {};
-                recentEx?.forEach(ex => {
-                    if (!historyMap[ex.date]) historyMap[ex.date] = [];
-                    historyMap[ex.date].push(`${ex.name} (${ex.sets}x${ex.reps}, ${ex.weight}kg)`);
-                });
-
-                const historyStr = Object.entries(historyMap)
-                    .map(([date, exs]) => `${date}: ${exs.join(', ')}`)
-                    .join(' | ') || "Žádná historie za poslední 3 dny.";
-
-                // Volání funkce
-                const { data, error } = await _supabase.functions.invoke('get-ai-advice', {
-                    body: { message: userQuery, history: historyStr }
-                });
-
-                if (error) throw new Error("Chyba spojení: " + error.message);
-
-                // --- ROBUSTNÍ ČTENÍ DAT (ŘEŠÍ CHYBU 0) ---
-                let finalReply = "";
-                if (data && data.choices && data.choices[0]?.message?.content) {
-                    finalReply = data.choices[0].message.content;
-                } else if (data && data.reply) {
-                    finalReply = data.reply;
-                } else {
-                    console.log("Odpověď z Edge funkce:", data);
-                    throw new Error("AI odpověděla v neznámém formátu.");
+                if (recentEx) {
+                    recentEx.forEach(ex => {
+                        if (!historyMap[ex.date]) historyMap[ex.date] = [];
+                        historyMap[ex.date].push(`${ex.name} (${ex.sets}x${ex.reps}, ${ex.weight}kg)`);
+                    });
                 }
 
-                aiTextOutput.innerHTML = formatAiResponse(finalReply);
+                const historyStr = Object.keys(historyMap).length > 0 
+                    ? Object.entries(historyMap)
+                        .map(([date, exs]) => `${date}: ${exs.join(', ')}`)
+                        .join(' | ')
+                    : "v posledních 3 dnech žádná historie";
+
+                // 4. Volání Edge Funkce
+                const { data, error } = await _supabase.functions.invoke('get-ai-advice', {
+                    body: { 
+                        message: userQuery,
+                        history: historyStr
+                    }
+                });
+
+                if (error) throw error;
+
+                // 5. Zobrazení výsledku
+                aiTextOutput.innerText = data.advice;
                 aiResponseArea.style.display = 'block';
 
             } catch (err) {
-                console.error("AI Error:", err);
-                alert("Trenér má technický problém: " + err.message);
+                console.error("Chyba AI:", err);
+                aiTextOutput.innerText = "Chyba při komunikaci s trenérem: " + err.message;
+                aiResponseArea.style.display = 'block';
             } finally {
                 aiLoader.style.display = 'none';
                 btnGeneratePlan.disabled = false;
             }
         });
-    }
-
-    function formatAiResponse(text) {
-        if (!text) return "";
-        return text
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/^\* (.*$)/gim, '<li>$1</li>')
-            .replace(/\n/g, '<br>');
     }
 });
