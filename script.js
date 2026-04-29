@@ -364,6 +364,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.deleteFood = async (id) => { if(confirm('Smazat jídlo?')) { await _supabase.from('food').delete().eq('id', id); await fetchData(); } };
 
     // --- 6. TRÉNINK ---
+    // OPRAVA: HLAVNÍ TLAČÍTKO "PŘIDAT DO DENÍKU"
     document.getElementById('btn-add-exercise').addEventListener('click', async () => {
         const name = nameInput.value.trim();
         const editId = editIdInput.value;
@@ -389,27 +390,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // Funkce pro přidání další série k existujícímu cviku
-    window.quickAddSet = async (exId) => {
-        const original = dbExercises.find(e => e.id === exId);
-        if (!original) return;
+    // OPRAVA: MODRÉ TLAČÍTKO "+ PŘIDAT DALŠÍ SÉRII"
+    const btnAddNextSet = document.querySelector('.exercise-setup button[style*="border: 1px dashed"]');
+    if (btnAddNextSet) {
+        btnAddNextSet.addEventListener('click', async () => {
+            const name = nameInput.value.trim();
+            if (!name) return alert("Nejdřív vyplň název cviku.");
 
-        const data = {
-            user_id: currentUser.id,
-            date: original.date,
-            phase: original.phase,
-            name: original.name,
-            sets: original.sets, // kopíruje nastavení původní série
-            reps: original.reps,
-            weight: original.weight,
-            kcal: 0, 
-            rating: ""
-        };
+            const data = {
+                user_id: currentUser.id,
+                date: currentDate.toISOString().split('T')[0],
+                phase: phaseInput.value,
+                name: name,
+                sets: setsInput.value || 1,
+                reps: repsInput.value || 0,
+                weight: weightInput.value || 0,
+                kcal: 0,
+                rating: ""
+            };
 
-        await _supabase.from('exercises').insert([data]);
-        await fetchData();
-        renderExercises();
-    };
+            const { error } = await _supabase.from('exercises').insert([data]);
+            if (!error) {
+                // Vymažeme jen opakování a váhu, název ponecháme
+                repsInput.value = "";
+                weightInput.value = "";
+                await fetchData();
+                renderExercises();
+            } else {
+                alert("Chyba: " + error.message);
+            }
+        });
+    }
 
     function renderExercises() {
         const wrapper = document.getElementById('exercise-list-wrapper');
@@ -437,7 +448,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 ${ex.rating ? `<div class="rating-tag" style="background: rgba(255,255,255,0.1); color: #fff;">${ex.rating}</div>` : ''}
                             </div>
                             <div class="action-btns">
-                                <button class="edit-exercise" style="background: #4ade80; color: #fff; margin-right:5px;" onclick="quickAddSet(${ex.id})"><i class="fas fa-plus"></i></button>
                                 <button class="edit-exercise" onclick="editEx(${ex.id})"><i class="fas fa-edit"></i></button>
                                 <button class="delete-exercise" onclick="deleteEx(${ex.id})"><i class="fas fa-trash"></i></button>
                             </div>
@@ -503,14 +513,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (statsWrapper) {
             statsWrapper.innerHTML = "";
-            const months = {};
-            filtered.forEach(ex => {
-                const d = new Date(ex.date);
-                const key = d.toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' });
-                if (!months[key]) months[key] = [];
-                months[key].push(ex);
-            });
-
             const lifeMax = {};
             dbExercises.forEach(ex => {
                 const isC = /běh|kolo|plavání|kardio|chůze/i.test(ex.name);
@@ -520,24 +522,32 @@ document.addEventListener('DOMContentLoaded', async () => {
                 else lifeMax[ex.name] = isC ? Math.min(lifeMax[ex.name], val) : Math.max(lifeMax[ex.name], val);
             });
 
+            const months = {};
+            filtered.forEach(ex => {
+                const d = new Date(ex.date);
+                const key = d.toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' });
+                if (!months[key]) months[key] = [];
+                months[key].push(ex);
+            });
+
             Object.keys(months).sort((a, b) => new Date(months[b][0].date) - new Date(months[a][0].date)).forEach(monthKey => {
                 const monthData = months[monthKey];
-                
-                // Seskupení pod jeden segment (název cviku a datum)
-                const groupedData = {};
-                monthData.forEach(ex => {
-                    const key = `${ex.date}_${ex.name}`;
-                    if (!groupedData[key]) {
-                        groupedData[key] = { ...ex, series: [] };
-                    }
-                    groupedData[key].series.push({ s: ex.sets, r: ex.reps, w: ex.weight });
-                });
-
                 const uniqueDays = [...new Set(monthData.map(ex => ex.date))].length;
                 const totalKcal = monthData.reduce((sum, ex) => sum + (Number(ex.kcal) || 0), 0);
                 
                 const card = document.createElement('div');
                 card.className = 'content-card';
+                
+                // OPRAVA: SESKUPOVÁNÍ PODLE DNE A NÁZVU CVIKU
+                const dailyGroups = {};
+                monthData.forEach(ex => {
+                    const groupKey = `${ex.date}_${ex.name}`;
+                    if (!dailyGroups[groupKey]) dailyGroups[groupKey] = { ...ex, allSets: [] };
+                    dailyGroups[groupKey].allSets.push(ex);
+                });
+
+                const sortedGroups = Object.values(dailyGroups).sort((a, b) => new Date(b.date) - new Date(a.date));
+
                 card.innerHTML = `
                     <h3 class="month-header">${monthKey}</h3>
                     <div class="stats-grid">
@@ -546,12 +556,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="stat-card"><span class="stat-label">Záznamů</span><span class="stat-value">${monthData.length}</span></div>
                     </div>
                     <div class="records-area" style="margin-top:20px;">
-                        ${Object.values(groupedData).sort((a,b) => new Date(b.date) - new Date(a.date)).map(group => {
+                        ${sortedGroups.map(group => {
                             const isC = /běh|kolo|eliptický|trenažéř|běžecký|pás|plavání|kardio|chůze/i.test(group.name);
                             const dateDay = new Date(group.date).getDate();
                             
-                            // Formátování sérií do jednoho řádku
-                            const seriesHtml = group.series.map(s => isC ? `${s.s}km/${s.r}min` : `${s.s}×${s.r}/${s.w}kg`).join(' | ');
+                            const setsDisplay = group.allSets.map(s => {
+                                const val = Number(isC ? s.reps : s.weight);
+                                const isLB = val > 0 && val === lifeMax[s.name];
+                                const core = isC ? `${s.reps}m (${s.sets}k)` : `${s.sets}×${s.reps}/${s.weight}k`;
+                                return `<span style="${isLB ? 'color:var(--green); font-weight:bold;' : ''}">${core}${isLB ? '⭐' : ''}</span>`;
+                            }).join(' | ');
 
                             return `
                                 <div class="record-item" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding: 10px 0;">
@@ -559,8 +573,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                                         <span style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;">${dateDay}. ${monthKey.split(' ')[0]}</span>
                                         <span style="font-weight:600; color: ${isC ? '#38bdf8' : '#fb7185'};">${group.name}</span>
                                     </div>
-                                    <div class="record-tags" style="text-align: right; max-width: 60%;">
-                                        <span class="record-val" style="font-size: 0.8rem; opacity: 0.8;">${seriesHtml}</span>
+                                    <div class="record-tags">
+                                        <span class="record-val" style="font-size: 0.85rem; text-align: right;">${setsDisplay}</span>
                                     </div>
                                 </div>`;
                         }).join('')}
@@ -644,7 +658,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // --- 8. AI TRENÉR (ANALÝZA POSLEDNÍCH 3 DNŮ) ---
+    // --- 8. AI TRENÉR ---
     if (btnGeneratePlan) {
         btnGeneratePlan.addEventListener('click', async () => {
             const userQuery = trainerInput.value.trim();
@@ -667,20 +681,34 @@ document.addEventListener('DOMContentLoaded', async () => {
                     .order('date', { ascending: false });
 
                 if (dbError) throw dbError;
-
-                const historyContext = recentEx.map(ex => `${ex.date}: ${ex.name} (${ex.sets}x${ex.reps}, ${ex.weight}kg)`).join('\n');
                 
-                // Zde by následovalo volání tvé AI API
-                console.log("Generování odpovědi pro: " + userQuery);
-                setTimeout(() => {
-                    aiTextOutput.innerText = "Na základě tvých posledních tréninků ti doporučuji dnes zaměřit pozornost na regeneraci a lehké kardio. Tvá historie ukazuje skvělou konzistenci!";
-                    aiLoader.style.display = 'none';
-                    aiResponseArea.style.display = 'block';
-                    btnGeneratePlan.disabled = false;
-                }, 1500);
+                const historyStr = recentEx.map(e => `${e.date}: ${e.name} ${e.sets}x${e.reps} ${e.weight}kg`).join(', ');
 
+                const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer SK-PROČ-TO-SEM-DÁVÁŠ-KOUKEJ-RADŠI-NA-KÓD` // Tady si doplň svůj klíč
+                    },
+                    body: JSON.stringify({
+                        model: "gpt-3.5-turbo",
+                        messages: [{
+                            role: "system",
+                            content: "Jsi profesionální fitness trenér. Odpovídej stručně a motivačně v češtině."
+                        }, {
+                            role: "user",
+                            content: `Moje historie za 3 dny: ${historyStr}. Otázka: ${userQuery}`
+                        }]
+                    })
+                });
+
+                const aiData = await response.json();
+                aiTextOutput.innerText = aiData.choices[0].message.content;
+                aiResponseArea.style.display = 'block';
             } catch (err) {
-                alert("Chyba AI trenéra: " + err.message);
+                aiTextOutput.innerText = "Teď se mi nedaří spojit se serverem, ale makej dál!";
+                aiResponseArea.style.display = 'block';
+            } finally {
                 aiLoader.style.display = 'none';
                 btnGeneratePlan.disabled = false;
             }
