@@ -469,12 +469,7 @@ button { border: none; cursor: pointer; transition: 0.2s; font-family: inherit; 
     transform: scale(0.98);
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* --- MOJE DOPLNĚNÉ ÚPRAVY PRO VÁHU (PŘIDÁNO NA KONEC) --- */
+/* --- MOJE DOPLNĚNÉ ÚPRAVY PRO VÁHU --- */
 #btn-open-weight {
     background: var(--orange);
     color: #422006;
@@ -502,7 +497,7 @@ button { border: none; cursor: pointer; transition: 0.2s; font-family: inherit; 
     border-radius: 8px;
 }
 
-/* --- NOVÉ ÚPRAVY PRO PROGRESS (STREAK, SUMY, SEZNAM AKTIVIT) --- */
+/* --- NOVÉ ÚPRAVY PRO PROGRESS --- */
 .stats-grid-modern {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -565,11 +560,13 @@ button { border: none; cursor: pointer; transition: 0.2s; font-family: inherit; 
 .history-item:hover {
     background: rgba(255, 255, 255, 0.04);
 }
+
+/* --- FOOTER --- */
 .app-footer {
   text-align: center;
   padding: 40px 20px;
   margin-top: 50px;
-  color: #888; /* Jemná šedá, aby to nerušilo */
+  color: #888;
   font-family: sans-serif;
 }
 
@@ -580,7 +577,7 @@ button { border: none; cursor: pointer; transition: 0.2s; font-family: inherit; 
 }
 
 .app-footer strong {
-  color: #fff; /* Tvé jméno bude trochu svítit */
+  color: #fff;
 }
 
 .support-btn {
@@ -596,28 +593,91 @@ button { border: none; cursor: pointer; transition: 0.2s; font-family: inherit; 
 
 .support-btn:hover {
   background: #222;
-  border-color: #00d1b2; /* Barva tvé aplikace (zelená/modrá) */
+  border-color: #00d1b2;
   color: #fff;
 }
 
-/* ocud
-/* Stylování nadpisů z AI (to jsou ty #####) */
+/* AI ODPOVĚĎ FORMÁTOVÁNÍ */
 #odpoved h5 {
     color: #fb7185;
     font-size: 1.2rem;
     border-bottom: 1px solid #333;
 }
 
-/* Stylování tučného textu (to jsou ty **text**) */
 #odpoved strong {
-    color: #38bdf8; /* Tvoje modrá */
+    color: #38bdf8;
     background: rgba(56, 189, 248, 0.1);
     padding: 0 4px;
     border-radius: 4px;
 }
 
-/* Stylování seznamů (ty hvězdičky na začátku řádku) */
 #odpoved ul {
     list-style-type: square;
     margin-left: 20px;
+}
+
+/* --- NOVÉ: STYLY PRO MULTI-SÉRIE (TO CO CHYBĚLO) --- */
+.set-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 40px;
+    gap: 10px;
+    margin-bottom: 12px;
+    align-items: center;
+}
+
+.set-row input {
+    margin-bottom: 0 !important;
+    padding: 12px;
+    font-size: 0.9rem;
+}
+
+.btn-remove-set {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error);
+    height: 45px;
+    width: 40px;
+    border-radius: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-remove-set:hover {
+    background: rgba(239, 68, 68, 0.2);
+}
+
+.btn-add-set-row {
+    background: rgba(56, 189, 248, 0.05);
+    border: 1px dashed var(--blue);
+    color: var(--blue);
+    padding: 12px;
+    border-radius: 12px;
+    width: 100%;
+    margin-bottom: 20px;
+    font-weight: 600;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-add-set-row:hover {
+    background: rgba(56, 189, 248, 0.1);
+}
+
+.sets-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 10px;
+}
+
+.set-badge {
+    background: rgba(255,255,255,0.05);
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    border: 1px solid rgba(255,255,255,0.1);
 }
