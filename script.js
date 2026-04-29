@@ -364,7 +364,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.deleteFood = async (id) => { if(confirm('Smazat jídlo?')) { await _supabase.from('food').delete().eq('id', id); await fetchData(); } };
 
     // --- 6. TRÉNINK ---
-    // OPRAVA: HLAVNÍ TLAČÍTKO "PŘIDAT DO DENÍKU"
     document.getElementById('btn-add-exercise').addEventListener('click', async () => {
         const name = nameInput.value.trim();
         const editId = editIdInput.value;
@@ -389,38 +388,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderExercises();   
         }
     });
-
-    // OPRAVA: MODRÉ TLAČÍTKO "+ PŘIDAT DALŠÍ SÉRII"
-    const btnAddNextSet = document.querySelector('.exercise-setup button[style*="border: 1px dashed"]');
-    if (btnAddNextSet) {
-        btnAddNextSet.addEventListener('click', async () => {
-            const name = nameInput.value.trim();
-            if (!name) return alert("Nejdřív vyplň název cviku.");
-
-            const data = {
-                user_id: currentUser.id,
-                date: currentDate.toISOString().split('T')[0],
-                phase: phaseInput.value,
-                name: name,
-                sets: setsInput.value || 1,
-                reps: repsInput.value || 0,
-                weight: weightInput.value || 0,
-                kcal: 0,
-                rating: ""
-            };
-
-            const { error } = await _supabase.from('exercises').insert([data]);
-            if (!error) {
-                // Vymažeme jen opakování a váhu, název ponecháme
-                repsInput.value = "";
-                weightInput.value = "";
-                await fetchData();
-                renderExercises();
-            } else {
-                alert("Chyba: " + error.message);
-            }
-        });
-    }
 
     function renderExercises() {
         const wrapper = document.getElementById('exercise-list-wrapper');
@@ -513,6 +480,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (statsWrapper) {
             statsWrapper.innerHTML = "";
+            const months = {};
+            filtered.forEach(ex => {
+                const d = new Date(ex.date);
+                const key = d.toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' });
+                if (!months[key]) months[key] = [];
+                months[key].push(ex);
+            });
+
             const lifeMax = {};
             dbExercises.forEach(ex => {
                 const isC = /běh|kolo|plavání|kardio|chůze/i.test(ex.name);
@@ -522,32 +497,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 else lifeMax[ex.name] = isC ? Math.min(lifeMax[ex.name], val) : Math.max(lifeMax[ex.name], val);
             });
 
-            const months = {};
-            filtered.forEach(ex => {
-                const d = new Date(ex.date);
-                const key = d.toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' });
-                if (!months[key]) months[key] = [];
-                months[key].push(ex);
-            });
-
             Object.keys(months).sort((a, b) => new Date(months[b][0].date) - new Date(months[a][0].date)).forEach(monthKey => {
                 const monthData = months[monthKey];
+                monthData.sort((a, b) => new Date(b.date) - new Date(a.date)); 
+
                 const uniqueDays = [...new Set(monthData.map(ex => ex.date))].length;
                 const totalKcal = monthData.reduce((sum, ex) => sum + (Number(ex.kcal) || 0), 0);
                 
                 const card = document.createElement('div');
                 card.className = 'content-card';
-                
-                // OPRAVA: SESKUPOVÁNÍ PODLE DNE A NÁZVU CVIKU
-                const dailyGroups = {};
-                monthData.forEach(ex => {
-                    const groupKey = `${ex.date}_${ex.name}`;
-                    if (!dailyGroups[groupKey]) dailyGroups[groupKey] = { ...ex, allSets: [] };
-                    dailyGroups[groupKey].allSets.push(ex);
-                });
-
-                const sortedGroups = Object.values(dailyGroups).sort((a, b) => new Date(b.date) - new Date(a.date));
-
                 card.innerHTML = `
                     <h3 class="month-header">${monthKey}</h3>
                     <div class="stats-grid">
@@ -556,25 +514,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="stat-card"><span class="stat-label">Záznamů</span><span class="stat-value">${monthData.length}</span></div>
                     </div>
                     <div class="records-area" style="margin-top:20px;">
-                        ${sortedGroups.map(group => {
-                            const isC = /běh|kolo|eliptický|trenažéř|běžecký|pás|plavání|kardio|chůze/i.test(group.name);
-                            const dateDay = new Date(group.date).getDate();
+                        ${monthData.map(ex => {
+                            const isC = /běh|kolo|eliptický|trenažéř|běžecký|pás|plavání|kardio|chůze/i.test(ex.name);
+                            const val = Number(isC ? ex.reps : ex.weight);
+                            const isLB = val > 0 && val === lifeMax[ex.name];
+                            const dateDay = new Date(ex.date).getDate();
+                            const valDisplay = isC ? `${ex.reps} min (${ex.sets} km)` : `${ex.sets}×${ex.reps} | ${ex.weight} kg`;
                             
-                            const setsDisplay = group.allSets.map(s => {
-                                const val = Number(isC ? s.reps : s.weight);
-                                const isLB = val > 0 && val === lifeMax[s.name];
-                                const core = isC ? `${s.reps}m (${s.sets}k)` : `${s.sets}×${s.reps}/${s.weight}k`;
-                                return `<span style="${isLB ? 'color:var(--green); font-weight:bold;' : ''}">${core}${isLB ? '⭐' : ''}</span>`;
-                            }).join(' | ');
-
                             return `
                                 <div class="record-item" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding: 10px 0;">
                                     <div style="display:flex; flex-direction:column;">
                                         <span style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;">${dateDay}. ${monthKey.split(' ')[0]}</span>
-                                        <span style="font-weight:600; color: ${isC ? '#38bdf8' : '#fb7185'};">${group.name}</span>
+                                        <span style="font-weight:600; color: ${isC ? '#38bdf8' : '#fb7185'};">${ex.name}</span>
                                     </div>
                                     <div class="record-tags">
-                                        <span class="record-val" style="font-size: 0.85rem; text-align: right;">${setsDisplay}</span>
+                                        ${isLB ? '<span class="badge life-best">LifeBest</span>' : ''}
+                                        <span class="record-val" style="font-size: 0.85rem;">${valDisplay}</span>
                                     </div>
                                 </div>`;
                         }).join('')}
@@ -658,7 +613,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // --- 8. AI TRENÉR ---
+    // --- 8. AI TRENÉR (ANALÝZA POSLEDNÍCH 3 DNŮ) ---
     if (btnGeneratePlan) {
         btnGeneratePlan.addEventListener('click', async () => {
             const userQuery = trainerInput.value.trim();
@@ -669,10 +624,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             btnGeneratePlan.disabled = true;
 
             try {
+                // 1. Výpočet data před 3 dny
                 const threeDaysAgo = new Date();
                 threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
                 const dateLimit = threeDaysAgo.toISOString().split('T')[0];
 
+                // 2. Načtení historie tréninků ze Supabase
                 const { data: recentEx, error: dbError } = await _supabase
                     .from('exercises')
                     .select('*')
@@ -681,32 +638,39 @@ document.addEventListener('DOMContentLoaded', async () => {
                     .order('date', { ascending: false });
 
                 if (dbError) throw dbError;
-                
-                const historyStr = recentEx.map(e => `${e.date}: ${e.name} ${e.sets}x${e.reps} ${e.weight}kg`).join(', ');
 
-                const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer SK-PROČ-TO-SEM-DÁVÁŠ-KOUKEJ-RADŠI-NA-KÓD` // Tady si doplň svůj klíč
-                    },
-                    body: JSON.stringify({
-                        model: "gpt-3.5-turbo",
-                        messages: [{
-                            role: "system",
-                            content: "Jsi profesionální fitness trenér. Odpovídej stručně a motivačně v češtině."
-                        }, {
-                            role: "user",
-                            content: `Moje historie za 3 dny: ${historyStr}. Otázka: ${userQuery}`
-                        }]
-                    })
+                // 3. Seskupení historie pro AI (aby věděla, co bylo který den)
+                const historyMap = {};
+                if (recentEx) {
+                    recentEx.forEach(ex => {
+                        if (!historyMap[ex.date]) historyMap[ex.date] = [];
+                        historyMap[ex.date].push(`${ex.name} (${ex.sets}x${ex.reps}, ${ex.weight}kg)`);
+                    });
+                }
+
+                const historyStr = Object.keys(historyMap).length > 0 
+                    ? Object.entries(historyMap)
+                        .map(([date, exs]) => `${date}: ${exs.join(', ')}`)
+                        .join(' | ')
+                    : "v posledních 3 dnech žádná historie";
+
+                // 4. Volání Edge Funkce
+                const { data, error } = await _supabase.functions.invoke('get-ai-advice', {
+                    body: { 
+                        message: userQuery,
+                        history: historyStr
+                    }
                 });
 
-                const aiData = await response.json();
-                aiTextOutput.innerText = aiData.choices[0].message.content;
+                if (error) throw error;
+
+                // 5. Zobrazení výsledku
+                aiTextOutput.innerText = data.advice;
                 aiResponseArea.style.display = 'block';
+
             } catch (err) {
-                aiTextOutput.innerText = "Teď se mi nedaří spojit se serverem, ale makej dál!";
+                console.error("Chyba AI:", err);
+                aiTextOutput.innerText = "Chyba při komunikaci s trenérem: " + err.message;
                 aiResponseArea.style.display = 'block';
             } finally {
                 aiLoader.style.display = 'none';
