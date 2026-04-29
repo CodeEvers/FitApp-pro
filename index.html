@@ -42,11 +42,10 @@
         }
         .support-btn:hover {
             background: #222;
-            border-color: #0081ff; /* Modrá barva z tvého loga */
+            border-color: #0081ff;
             color: #fff;
         }
 
-        /* NOVÉ STYLY PRO AI TRENÉRA */
         .ai-hero-card {
             text-align: center;
             padding: 30px 20px;
@@ -77,6 +76,36 @@
             display: flex;
             align-items: center;
             gap: 10px;
+        }
+
+        /* NOVÉ STYLY PRO SÉRIE */
+        .set-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 40px;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        .btn-remove-set {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            height: 45px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+        .btn-add-set-row {
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--blue);
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            border: 1px dashed var(--blue);
+            cursor: pointer;
         }
     </style>
 </head>
@@ -173,11 +202,18 @@
                 
                 <input type="text" id="exercise-name" placeholder="Název aktivity (Běh, Benč, Plavání...)">
                 
-                <div class="input-row">
-                    <input type="number" id="exercise-sets" placeholder="Série">
-                    <input type="number" id="exercise-reps" placeholder="Opakování">
-                    <input type="number" id="exercise-weight" placeholder="Váha (kg)">
+                <div id="sets-container">
+                    <div class="set-row">
+                        <input type="number" class="set-count" placeholder="Série" value="1">
+                        <input type="number" class="set-reps" placeholder="Opakování">
+                        <input type="number" class="set-weight" placeholder="Váha (kg)">
+                        <div style="width:40px"></div>
+                    </div>
                 </div>
+
+                <button type="button" id="btn-add-set-row" class="btn-add-set-row">
+                    <i class="fas fa-plus"></i> Přidat další sérii
+                </button>
 
                 <div class="input-row" style="margin-top: 10px;">
                     <input type="number" id="exercise-kcal" placeholder="Kalorie (kcal)">
